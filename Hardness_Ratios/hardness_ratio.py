@@ -10,7 +10,7 @@ This version of the code is now modifed by Anthony Santini (Wesleyan 2019 Master
 """
 # Extracts counts from the from_csc sources processed by the raytracer and corrects for area. Creates counts_info.csv
 
-def clean_results(obsid):
+def clean_results(obsid): #Ant: I don't know if this is still required for the refactored version of this code
     #the following makes all obsids into integers and removes anything globbed that isnt a number (and therefore not an obsid)
     for i in range(0,len(obsid)):
         try:
@@ -20,16 +20,18 @@ def clean_results(obsid):
     obsid.remove(-1)
     obsid.remove(-1) #THIS IS A PRETTY POOR SOLUTION, BUT IT WORKS FOR NOW
     return obsid
-
+'''
+#Ant: This runs the specextract routine as a test. I don't know why it is still enabled but I am disabling it.
 def spec(obsid):
     #Not used in this program -- can probably be deleted
     print "Beginning specextract for obsid " + str(obsid)
     obsid = str(obsid)
     print "Getting name of evt2 file..."
-    name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
+    ##name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
+    name = glob.glob("/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/*_evt2.fit*")
     print name
     print "Shortening name..."
-    name = name[0][-24:]
+    ##name = name[0][-24:] #Ant: What does this do? I'm waiting to see if I have to modify it
     print name
     print "Unlearning specextract..."
     os.system("punlearn specextract")
@@ -52,7 +54,7 @@ def spec(obsid):
         weight=no \
         clobber=yes \
         verbose=1")
-
+'''
 def effectiveAreaCorrect(count, cycle, hardness, instrument):
     """
     Corrects the input number of counts depending on the cycle and the wavelength range
@@ -173,26 +175,46 @@ def src_flux(obsid):
     obsid = str(obsid)
     print "Beginning flux extraction for obsid " + obsid + "..."
     print "Getting name of evt2 file..."
-    name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
-    print name
-    print "Shortening name..."
-    name = name[0][-24:]
+    ##name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
+    Evt2_Fpath = glob.glob("/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/*_evt2.fit*")
+    print "Evt2_Fpath: ", Evt2_Fpath
+    ##print "Shortening name..."
+    #Ant: This is done only for an exact directory on a computer not used anymore. It must be modified to create the shortened filename from an arbitary filepath
+    ##name = name[0][-24:]
+    name_L=Evt2_Fpath.split("/")
+    print "name_L: ", name_L
+    name=name_L[len(name_L)-1]
     print name
     print "Getting system path..."
-    path = '/Volumes/xray/spirals/trace/' + obsid + '/'
+    '''
+    ##path = '/Volumes/xray/spirals/trace/' + obsid + '/' #Ant: This needs to be modfied to be using the Hybrid Regions files instead of the traced region files in the Trace directory
+    #Ant: The purpose of this section is to count the total amount of souces for a given ObsID. This can be done better simply by counting the number of rows in the Hybrid_Region file for a given ObsID
     print "Getting number of files in the current obsid's directory..."
     num_files = len([f for f in os.listdir(path)
                 if os.path.isfile(os.path.join(path, f))])
     print str(num_files) + " files found..."
     num = int((num_files-4)/5)
     print str(num) + " sources found..."
-
+    '''
+    Hybrid_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid.reg"
+    Hybrid_File=open(Hybrid_Filepath)
+    Hybrid_Region_Str=Hybrid_File.read()
+    Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
+    Hybrid_Region_Str_L=Hybrid_Region_Str.split(Header_String)
+    Hybrid_Region_Str_Reduced=Hybrid_Region_Str_L[1]
+    #print "Hybrid_Region_Str_Reduced:\n", Hybrid_Region_Str_Reduced
+    Hybrid_Region_Str_Reduced_L=Hybrid_Region_Str_Reduced.split("\n")
+    #print "Hybrid_Region_Str_Reduced_L: ", Hybrid_Region_Str_Reduced_L
+    #print "len(Hybrid_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_Region_Str_Reduced_L)
+    Hybrid_Region_Str_Reduced_L.pop(len(Hybrid_Region_Str_Reduced_L)-1)
+    num=len(Hybrid_Region_Str_Reduced_L)
     #######################################################
     ###### Get the Cycle and Instrument for the Data ######
     #######################################################
 
     print "Getting cycle..."
-    date = sp.check_output("dmkeypar /Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + name + " DATE-OBS echo+", shell=True)
+    ##date = sp.check_output("dmkeypar /Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + name + " DATE-OBS echo+", shell=True) #Ant: This need to be modifed to be used for all observations not just observations in CSC
+    date = sp.check_output("dmkeypar /Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + name + " DATE-OBS echo+", shell=True)
     year = date[:4]
     shYear = year[2:]
     cycle = int(shYear)+1                           #eg. 2004 is cycle 5, 2005 is cycle 6, etc. This is pretty consistently true
@@ -226,7 +248,7 @@ def src_flux(obsid):
     bkgAreaMed = []
     bkgAreaHard = []
 
-    for i in range(1, num+1):
+    for i in range(1, num+1):  #Ant: This needs to be itterated through the Hybrid Regions rather then the trace regions.
         #This was taken from filter_background_sources -- will use it to get the pointing which will tell us about the instrument
         #Finds x and y for a specific source -- then we can determine which chip it is on, and therefore what "instrument" to use
 
@@ -329,7 +351,7 @@ def src_flux(obsid):
         #########################
 
         print "Extracting hard X-rays for source " + str(i) + " in obsid " + obsid + "..."
-
+        #Ant: This needs to be updated to use the Hybrid region files
         os.system("dmextract \
         infile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + ".reg)]\" \
         outfile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits\" \
@@ -408,7 +430,7 @@ if __name__ == '__main__':
     print "...done!"
 
 
-    obsid = clean_results(obsid)
+    obsid = clean_results(obsid) #Ant: I don't know if this is still required for the refactored version of this code
 
 
     ##############################
