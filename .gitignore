@@ -1,0 +1,10 @@
+*.inp
+*.csv
+Simon_Original_Code
+Counts_Info
+Fit_Spectrum
+/BEHR/behr_hug.pro
+/BEHR/behr_test.*
+/BEHR/colbehr.pro
+/Hardness_Ratios/hardness_ratio_old_Mod.py
+.oldgit
