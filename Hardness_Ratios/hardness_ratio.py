@@ -8,6 +8,15 @@ This version of the code is now modifed by Anthony Santini (Wesleyan 2019 Master
 
 
 """
+import re
+import os
+import numpy as np
+import glob
+import subprocess as sp
+##from done_email import when_done #Ant: This is no longer required
+from ciao_contrib.runtool import *
+import csv
+
 # Extracts counts from the from_csc sources processed by the raytracer and corrects for area. Creates counts_info.csv
 
 def clean_results(obsid): #Ant: I don't know if this is still required for the refactored version of this code
@@ -248,10 +257,10 @@ def src_flux(obsid):
     bkgAreaMed = []
     bkgAreaHard = []
 
-    for i in range(1, num+1):  #Ant: This needs to be itterated through the Hybrid Regions rather then the trace regions.
+    #for i in range(1, num+1):  #Ant: This needs to be itterated through the Hybrid Regions rather then the trace regions.
         #This was taken from filter_background_sources -- will use it to get the pointing which will tell us about the instrument
         #Finds x and y for a specific source -- then we can determine which chip it is on, and therefore what "instrument" to use
-
+        """
         print "\nReading in for file number " + str(i) + "..."
         f = open("/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + ".reg")
         file_read = f.read()
@@ -262,12 +271,32 @@ def src_flux(obsid):
         y = float(first[1])
         f.close()
         print "Got x and y values..."
-
+        """
+    Hybrid_BG_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid_Background.reg"
+    Hybrid_BG_File=open(Hybrid_BG_Filepath)
+    Hybrid_BG_Region_Str=Hybrid_BG_File.read()
+    Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
+    Hybrid_BG_Region_Str_L=Hybrid_BG_Region_Str.split(Header_String)
+    Hybrid_BG_Region_Str_Reduced=Hybrid_BG_Region_Str_L[1]
+    #print "Hybrid_BG_Region_Str_Reduced:\n", Hybrid_BG_Region_Str_Reduced
+    Hybrid_BG_Region_Str_Reduced_L=Hybrid_BG_Region_Str_Reduced.split("\n")
+    #print "Hybrid_BG_Region_Str_Reduced_L: ", Hybrid_BG_Region_Str_Reduced_L
+    #print "len(Hybrid_BG_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_BG_Region_Str_Reduced_L)
+    Hybrid_BG_Region_Str_Reduced_L.pop(len(Hybrid_BG_Region_Str_Reduced_L)-1)
+    #for Hybrid_BG_Region_Str in Hybrid_BG_Region_Str_Reduced_L: #Ant: I need to modify this so that it itterates through the Hybrid source background regions as well!
+    for i in range(0,num):
+        Hybrid_Region_Str=Hybrid_Region_Str_Reduced_L[i]
+        Hybrid_Region_Str_L=re.split("[(),]", Hybrid_Region_Str)
+        x_str=Hybrid_Region_Str_L[1]
+        x=float(x_str)
+        y_str=Hybrid_Region_Str_L[2]
+        y=float(y_str)
+        print "Got x and y values..."
         print "punlearn dmcoords..."
         os.system("punlearn dmcoords")
         print "running dmcoords..."
         #print "dmcoords '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg"
-        os.system("dmcoords '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg")
+        os.system("dmcoords '/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg")
         print "Getting Chip ID..."
         chip = sp.check_output("pget dmcoords chip_id", shell=True)
         chip = int(chip)
@@ -285,30 +314,46 @@ def src_flux(obsid):
         #########################
 
         print "Extracting soft X-rays for source " + str(i) + " in obsid " + obsid + "..."
-
+        Hybrid_Region_Str_Reduced_L=re.split("[; ]",Hybrid_Region_Str)
+        Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced[1]
+        Hybrid_BG_Region_Outer_R_Str=Hybrid_BG_Region_Str_Reduced_L[i]
+        Hybrid_BG_Region_Outer_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Outer_R_Str)
+        Hybrid_BG_Region_Outer_R_Str_Reduced=Hybrid_BG_Region_Outer_R_Str_Reduced_L[1]
+        Hybrid_BG_Region_Inner_R_Str=Hybrid_BG_Region_Str_Reduced_L[i+1]
+        Hybrid_BG_Region_Inner_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Inner_R_Str)
+        Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
+        Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
+        """
         os.system("dmextract \
         infile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + ".reg)]\" \
-        outfile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits\" \
+        outfile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits\" \ #Ant: This outfile needs to be modifed to be in the Simon Sandboxed Code Directory
         opt=generic \
         bkg=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + "_bkg.reg)]\" \
         clobber=no")
+        """
+        os.system("dmextract \
+        infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky="+Hybrid_Region_Str_Reduced+"]\" \
+        outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_softcounts.fits\" \
+        opt=generic \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky="+Hybrid_BG_Region+"]\" \
+        clobber=no")
 
         #Getting counts
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits[cols counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_softcounts.fits[cols counts]'")
         count = sp.check_output("pget dmstat out_sum", shell=True)
         count = effectiveAreaCorrect(count, cycle, 0, inst)
         rawCountsSoft.append(count)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits[cols area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_softcounts.fits[cols area]'")
         area = sp.check_output("pget dmstat out_sum", shell=True)
         areaSoft.append(area)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits[cols bg_counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_softcounts.fits[cols bg_counts]'")
         bgCount = sp.check_output("pget dmstat out_sum", shell=True)
         bgCount = effectiveAreaCorrect(bgCount, cycle, 0, inst)
         bkgCountsSoft.append(bgCount)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_softcounts.fits[cols bg_area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_softcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaSoft.append(bgArea)
 
@@ -320,28 +365,28 @@ def src_flux(obsid):
         print "Extracting medium X-rays for source " + str(i) + " in obsid " + obsid + "..."
 
         os.system("dmextract \
-        infile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + ".reg)]\" \
-        outfile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_medcounts.fits\" \
+        infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky="+Hybrid_Region_Str_Reduced+"]\" \
+        outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_medcounts.fits\" \
         opt=generic \
-        bkg=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + "_bkg.reg)]\" \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky="+Hybrid_BG_Region+"]\" \
         clobber=no")
 
         #Getting counts
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_medcounts.fits[cols counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_medcounts.fits[cols counts]'")
         count = sp.check_output("pget dmstat out_sum", shell=True)
         count = effectiveAreaCorrect(count, cycle, 1, inst)
         rawCountsMed.append(count)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_medcounts.fits[cols area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_medcounts.fits[cols area]'")
         area = sp.check_output("pget dmstat out_sum", shell=True)
         areaMed.append(area)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_medcounts.fits[cols bg_counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_medcounts.fits[cols bg_counts]'")
         bgCount = sp.check_output("pget dmstat out_sum", shell=True)
         bgCount = effectiveAreaCorrect(bgCount, cycle, 1, inst)
         bkgCountsMed.append(bgCount)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_medcounts.fits[cols bg_area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_medcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaMed.append(bgArea)
 
@@ -353,28 +398,28 @@ def src_flux(obsid):
         print "Extracting hard X-rays for source " + str(i) + " in obsid " + obsid + "..."
         #Ant: This needs to be updated to use the Hybrid region files
         os.system("dmextract \
-        infile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + ".reg)]\" \
-        outfile=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits\" \
+        infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky="+Hybrid_Region_Str_Reduced+"]\" \
+        outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_hardcounts.fits\" \
         opt=generic \
-        bkg=\"/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky=region(/Volumes/xray/spirals/trace/" + obsid + "/" + str(i) + "_bkg.reg)]\" \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky="+Hybrid_BG_Region+"]\" \
         clobber=no")
 
         #Getting counts
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits[cols counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_hardcounts.fits[cols counts]'")
         count = sp.check_output("pget dmstat out_sum", shell=True)
         count = effectiveAreaCorrect(count, cycle, 2, inst)
         rawCountsHard.append(count)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits[cols area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_hardcounts.fits[cols area]'")
         area = sp.check_output("pget dmstat out_sum", shell=True)
         areaHard.append(area)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits[cols bg_counts]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_hardcounts.fits[cols bg_counts]'")
         bgCount = sp.check_output("pget dmstat out_sum", shell=True)
         bgCount = effectiveAreaCorrect(bgCount, cycle, 2, inst)
         bkgCountsHard.append(bgCount)
 
-        os.system("dmstat '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/extracted_counts_info/" + obsid + "_" + str(i) + "_hardcounts.fits[cols bg_area]'")
+        os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i) + "_hardcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaHard.append(bgArea)
 
@@ -410,18 +455,11 @@ def src_flux(obsid):
 
 
 
-if __name__ == '__main__':
-
-    import os
-    import numpy as np
-    import glob
-    import subprocess as sp
-    from done_email import when_done
-    from ciao_contrib.runtool import *
-    import csv
-
+##if __name__ == '__main__': #Ant: I don't know if this is needed but I am quoting it out anyway
+def Driver(obsid_L):
+    """
     print "Reading in obsids... "
-    obsid_path = glob.glob("chandra_from_csc/*")
+    obsid_path = glob.glob("chandra_from_csc/*") #Ant: This should be modifed to just use an input list of ObsIds
 
     obsid = []
     for i in range(0,len(obsid_path)):
@@ -431,14 +469,14 @@ if __name__ == '__main__':
 
 
     obsid = clean_results(obsid) #Ant: I don't know if this is still required for the refactored version of this code
-
+    """
 
     ##############################
     ###### Start Processing ######
     ##############################
 
 
-    print "All obsid names processed."
+    #print "All obsid names processed."
 
     obsidData = ["OBSID"]
     sourceData = ["SOURCE"]
@@ -456,10 +494,10 @@ if __name__ == '__main__':
     bkgAreaHard = ["BKG_AREA[2.1-7.5]"]
 
 
-    for i in range(0,len(obsid)):
-        try:
+    for i in range(0,len(obsid_L)):
+        try: #Ant: ALL ERRORS SHOULD NOT BE ASSUMED TO BE THE RESULT OF A FAILED FLUX EXTRACTION! THIS NEEDS TO BE FIXED AND TAKEN OUT OF THE TRY/EXCEPT CONDITIONAL ENTIRELY!
             print "\nAttempting flux retrieval..."
-            obs, src, countS, countM, countH, areaS, areaM, areaH, bgcountS, bgcountM, bgcountH, bgareaS, bgareaM, bgareaH = src_flux(obsid[i])
+            obs, src, countS, countM, countH, areaS, areaM, areaH, bgcountS, bgcountM, bgcountH, bgareaS, bgareaM, bgareaH = src_flux(str(obsid_L[i]))
 
             # print obs
             # print src
@@ -507,10 +545,16 @@ if __name__ == '__main__':
     # for i in range(0,len(obsidData)):
         # print zippedList[i]
 
-    with open('counts_info.csv', 'wb') as csvfile:
+    #with open('counts_info.csv', 'wb') as csvfile:
+    with open('/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/counts_info.csv', 'wb') as csvfile:
         cWriter = csv.writer(csvfile, delimiter=',')
         for i in range(0,len(obsidData)):
             cWriter.writerow(zippedList[i])
 
 
     #when_done("specextract")
+
+def Main():
+    Driver([10025,12748,15582])
+
+Main()
