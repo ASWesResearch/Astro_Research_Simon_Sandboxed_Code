@@ -502,13 +502,14 @@ def Driver(obsid_L):
     rawCountsSoft = ["RAW_COUNTS[.3-1]"]
     rawCountsMed = ["RAW_COUNTS[1-2.1]"]
     rawCountsHard = ["RAW_COUNTS[2.1-7.5]"]
-    areaSoft = ["AREA[.3-1]"]
+    #areaSoft = ["AREA[.3-1]"]
+    areaSoft = ["AREA"]
     areaMed = ["AREA[1-2.1]"]
     areaHard = ["AREA[2.1-7.5]"]
     bkgCountsSoft = ["BKG_COUNTS[.3-1]"]
     bkgCountsMed = ["BKG_COUNTS[1-2.1]"]
     bkgCountsHard = ["BKG_COUNTS[2.1-7.5]"]
-    bkgAreaSoft = ["BKG_AREA[.3-1]"]
+    bkgAreaSoft = ["BKG_AREA"]
     bkgAreaMed = ["BKG_AREA[1-2.1]"]
     bkgAreaHard = ["BKG_AREA[2.1-7.5]"]
 
@@ -558,7 +559,8 @@ def Driver(obsid_L):
             #print "No traced sources in obsid " + str(obsid[i])
             print "\nFlux extraction failed for obsid " + str(obsid[i])
 
-    zippedList = zip(obsidData, sourceData, rawCountsSoft, rawCountsMed, rawCountsHard, areaSoft, areaMed, areaHard, bkgCountsSoft, bkgCountsMed, bkgCountsHard, bkgAreaSoft, bkgAreaMed, bkgAreaHard)
+    #zippedList = zip(obsidData, sourceData, rawCountsSoft, rawCountsMed, rawCountsHard, areaSoft, areaMed, areaHard, bkgCountsSoft, bkgCountsMed, bkgCountsHard, bkgAreaSoft, bkgAreaMed, bkgAreaHard)
+    zippedList = zip(obsidData, sourceData, rawCountsSoft, rawCountsMed, rawCountsHard, bkgCountsSoft, bkgCountsMed, bkgCountsHard, areaSoft, bkgAreaSoft)
 
 
     # print len(obsidData)
