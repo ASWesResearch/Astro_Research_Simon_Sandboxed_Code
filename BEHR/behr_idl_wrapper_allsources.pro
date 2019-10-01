@@ -15,7 +15,8 @@ pro behr_idl_wrapper
 
 
   lun=1
-  openr, lun,'counts_info_all_clean.csv'
+  ;openr, lun,'counts_info_all_clean.csv'
+  openr, lun,'counts_info.csv'
   line=''
   Obsid=[]
   Source=[]
