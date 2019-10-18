@@ -8,8 +8,13 @@ Fit_Spectrum
 /BEHR/colbehr.pro
 /Hardness_Ratios/hardness_ratio_old_Mod.py
 /Hardness_Ratios/extracted_counts_info
+/Hardness_Ratios/Old_Outputs
+/Specextract/extracted_spectra
+/Specextract/extracted_spectra_old/
 Test_IDL_Code
 Run
+Run_Old
+Flux_Calc/Source_Fluxes
 BEHR/._hipd_interval.pro
 BEHR/BEHR_Source_Code/
 BEHR/hipd_interval.pro
