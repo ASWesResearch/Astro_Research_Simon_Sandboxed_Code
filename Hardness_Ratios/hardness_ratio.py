@@ -307,9 +307,16 @@ def src_flux(obsid):
         Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced_Split_L[1]
         print "Hybrid_Region_Str_Reduced: ", Hybrid_Region_Str_Reduced
         #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
+        print "i: ", i
         j=i
+        print "j Before: ", j
+        """
         if(j%2!=0):
-            j=j+1
+            #j=j+1 #Ant: I lost a week to this bug...
+            j=2*j
+        """
+        j=2*j
+        print "j After: ", j
         Hybrid_BG_Region_Outer_R_Str=Hybrid_BG_Region_Str_Reduced_L[j]
         Hybrid_BG_Region_Outer_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Outer_R_Str)
         Hybrid_BG_Region_Outer_R_Str_Reduced=Hybrid_BG_Region_Outer_R_Str_Reduced_L[1]
@@ -319,6 +326,7 @@ def src_flux(obsid):
         Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
         print "Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced
         Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
+        print "Hybrid_BG_Region: ", Hybrid_BG_Region
         #Ant: Calculating the area of the current Hybrid source region
         #shape1 ='circle(' + str(X_Phys) +','+ str(Y_Phys)+','+ str(cur_r)+')' #shape1:-str, shape1, The shape string of the current area circle
         shape1=Hybrid_Region_Str_Reduced
