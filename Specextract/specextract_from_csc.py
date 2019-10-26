@@ -9,30 +9,13 @@ This version of the code is now modifed by Anthony Santini (Wesleyan 2019 Master
 
 """
 import os
-#from ciao_contrib.runtool import *
+from ciao_contrib.runtool import *
+import ciao_contrib.runtool as rt
 import numpy as np
 import glob
 import re
 #from done_email import when_done
 
-"""
-def clean_results(obsid):
-    #the following makes all obsids into integers and removes anything globbed that isnt a number (and therefore not an obsid)
-    for i in range(0,len(obsid)):
-        try:
-            obsid[i] = int(obsid[i])
-        except ValueError:
-            obsid[i] = -1
-    obsid.remove(-1)
-    obsid.remove(-1) #THIS IS A PRETTY POOR SOLUTION, BUT IT WORKS FOR NOW
-    #print len(obsid)
-    #for item in obsid:
-    #    if item == -1:
-    #        obsid.remove(item)
-    #print len(obsid)
-    #above should be 2 shorter than first length, since there are 2 non-obs id files in that folder
-    return obsid
-"""
 def spec(obsid):
     """
     print "Beginning specextract for obsid " + str(obsid)
@@ -151,7 +134,7 @@ def spec(obsid):
         Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
         print "Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced
         Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
-
+        print "Hybrid_BG_Region: ", Hybrid_BG_Region
         # print "specextract " + obsid + " " + str(i)
         # print "Assigning new defaults to specextract for source number " + str(i) + "..."
         # print "Assigning infile..."
@@ -192,6 +175,7 @@ def spec(obsid):
         clobber=yes \
         verbose=1")
         """
+
         os.system("specextract \
         infile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]' \
         bkgfile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]' \
@@ -200,6 +184,16 @@ def spec(obsid):
         weight=no \
         clobber=yes \
         verbose=1")
+        
+        """
+        #Ant Note:dmcoords(infile=str(evtfpath),chipx=BG_X, chipy=BG_Y, chip_id=Chip_ID_Test, option='chip', verbose=0)
+        Infile_Str="/Volumes/xray/simon/all_chandra_observations/" + str(obsid) + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]"
+        Bkgfile_Str="/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]"
+        Outroot_Str="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
+        Outroot_Str_Test="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra_Test/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
+        #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", verbose=1)
+        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", verbose=1)
+        """
 ##if __name__ == '__main__':
 def Driver(obsid_L):
     """
@@ -234,5 +228,10 @@ def Driver(obsid_L):
 def Main():
     #Driver([10125])
     #Driver([6096, 1971, 1972, 768, 952, 11674, 13255, 13253, 13246, 12952, 12953, 13247, 12951, 2025, 9548, 2149, 2197, 9510, 6131, 5908, 803, 14342, 12995, 2064, 16024, 12992, 14332, 13202, 793, 2933, 11104, 379, 2056, 2055, 2922, 9506, 11344, 766, 4688, 6869, 6872, 3554, 2057, 2058, 8041, 9121, 9546, 7252, 7060, 9553, 5930, 5931, 5929, 2079, 5905, 9527, 4689, 3947, 1563, 9507, 4613, 794, 11775, 11271, 3951, 2062, 2027, 2060, 2061, 2070, 2032, 7154, 7153, 11779, 5932, 2976, 4613, 794, 1043, 4632, 4631, 4633, 4404, 2059, 12095, 2040, 2915, 4372, 2069, 11229, 7848, 15383, 10125, 2031, 10875, 12889, 12888, 321, 322, 9551, 9550, 3954, 2020, 2068, 4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
-    Driver([6096, 1971, 1972, 768, 952, 11674, 13255, 13253, 13246, 12952, 12953, 13247, 12951, 2025])
+    #Driver([6096, 1971, 1972, 768, 952, 11674, 13255, 13253, 13246, 12952, 12953, 13247, 12951, 2025])
+    #Driver([9548, 2149, 2197, 9510, 6131, 5908, 803, 14342, 12995, 2064, 16024, 12992, 14332, 13202])
+    Driver([2056, 2055, 2922, 9506, 11344, 766, 4688, 6869, 6872, 3554, 2057, 2058, 8041, 9121, 9546, 7252, 7060, 9553, 5930, 5931, 5929, 2079, 5905, 9527, 4689, 3947, 1563, 9507, 4613, 794, 11775, 11271, 3951, 2062, 2027, 2060, 2061, 2070, 2032, 7154, 7153, 11779, 5932, 2976, 4613, 794, 1043, 4632, 4631, 4633, 4404, 2059, 12095, 2040, 2915, 4372, 2069, 11229, 7848, 15383, 10125, 2031, 10875, 12889, 12888, 321, 322, 9551, 9550, 3954, 2020, 2068, 4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
+    #Parallelization Testing
+    #Driver([6096])
+    #Driver([1971])
 Main()
