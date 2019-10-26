@@ -11,6 +11,7 @@ Fit_Spectrum
 /Hardness_Ratios/Old_Outputs
 /Specextract/extracted_spectra
 /Specextract/extracted_spectra_old/
+/Specextract/extracted_spectra_Test/
 Test_IDL_Code
 Run
 Run_Old
