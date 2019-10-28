@@ -19,184 +19,203 @@ from multiprocessing import Pool
 
 def spec(obsid):
     with rt.new_pfiles_environment(ardlib=True):
-        """
-        print "Beginning specextract for obsid " + str(obsid)
-        obsid = str(obsid)
-        print "Getting name of evt2 file..."
-        name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
-        print name
-        print "Shortening name..."
-        name = name[0][-24:]
-        print name
-        print "Unlearning specextract..."
-        os.system("punlearn specextract")
-        print "Getting system path..."
-        path = '/Volumes/xray/spirals/trace/' + obsid + '/'
-        print "Getting number of files in the current obsid's directory..."
-        num_files = len([f for f in os.listdir(path)
-                    if os.path.isfile(os.path.join(path, f))])
-        print str(num_files) + " files found..."
-        num = int((num_files-4)/5)
-        print str(num) + " sources to be extracted..."
-        """
-        obsid = str(obsid)
-        print "Beginning flux extraction for obsid " + obsid + "..."
-        print "Getting name of evt2 file..."
-        ##name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
-        Evt2_Fpath_L = glob.glob("/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/*_evt2.fit*")
-        Evt2_Fpath=Evt2_Fpath_L[0]
-        print "Evt2_Fpath: ", Evt2_Fpath
-        ##print "Shortening name..."
-        #Ant: This is done only for an exact directory on a computer not used anymore. It must be modified to create the shortened filename from an arbitary filepath
-        ##name = name[0][-24:]
-        name_L=Evt2_Fpath.split("/")
-        print "name_L: ", name_L
-        name=name_L[len(name_L)-1]
-        print name
-        Hybrid_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid.reg"
-        Hybrid_File=open(Hybrid_Filepath)
-        Hybrid_Region_Str=Hybrid_File.read()
-        Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
-        Hybrid_Region_Str_L=Hybrid_Region_Str.split(Header_String)
-        Hybrid_Region_Str_Reduced=Hybrid_Region_Str_L[1]
-        #print "Hybrid_Region_Str_Reduced:\n", Hybrid_Region_Str_Reduced
-        Hybrid_Region_Str_Reduced_L=Hybrid_Region_Str_Reduced.split("\n")
-        #print "Hybrid_Region_Str_Reduced_L: ", Hybrid_Region_Str_Reduced_L
-        #print "len(Hybrid_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_Region_Str_Reduced_L)
-        Hybrid_Region_Str_Reduced_L.pop(len(Hybrid_Region_Str_Reduced_L)-1)
-        num=len(Hybrid_Region_Str_Reduced_L)
-        print "num: ", num
-        ##print "Unlearning specextract..."
-        ##os.system("punlearn specextract")
-        #print "Getting system path..."
-        Hybrid_BG_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid_Background.reg"
-        Hybrid_BG_File=open(Hybrid_BG_Filepath)
-        Hybrid_BG_Region_Str=Hybrid_BG_File.read()
-        Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
-        Hybrid_BG_Region_Str_L=Hybrid_BG_Region_Str.split(Header_String)
-        Hybrid_BG_Region_Str_Reduced=Hybrid_BG_Region_Str_L[1]
-        #print "Hybrid_BG_Region_Str_Reduced:\n", Hybrid_BG_Region_Str_Reduced
-        Hybrid_BG_Region_Str_Reduced_L=Hybrid_BG_Region_Str_Reduced.split("\n")
-        #print "Hybrid_BG_Region_Str_Reduced_L: ", Hybrid_BG_Region_Str_Reduced_L
-        #print "len(Hybrid_BG_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_BG_Region_Str_Reduced_L)
-        Hybrid_BG_Region_Str_Reduced_L.pop(len(Hybrid_BG_Region_Str_Reduced_L)-1)
-        #for Hybrid_BG_Region_Str in Hybrid_BG_Region_Str_Reduced_L: #Ant: I need to modify this so that it itterates through the Hybrid source background regions as well!
-        #for i in range(1,num+1):
-        for i in range(0,num):
-            Hybrid_Region_Str=Hybrid_Region_Str_Reduced_L[i]
-            print "Hybrid_Region_Str: ", Hybrid_Region_Str
-            Hybrid_Region_Str_L=re.split("[(),]", Hybrid_Region_Str)
-            print "Hybrid_Region_Str_L: ", Hybrid_Region_Str_L
+        with new_tmpdir() as tmpdir:
             """
-            x_str=Hybrid_Region_Str_L[1]
-            x=float(x_str)
-            y_str=Hybrid_Region_Str_L[2]
-            y=float(y_str)
-            print "Got x and y values..."
-            print "punlearn dmcoords..."
-            os.system("punlearn dmcoords")
-            print "running dmcoords..."
-            #print "dmcoords '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg"
-            os.system("dmcoords '/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg")
-            print "Getting Chip ID..."
-            chip = sp.check_output("pget dmcoords chip_id", shell=True)
-            chip = int(chip)
-            print "Got Chip ID: " + str(chip)
-
-            if chip == 5 or chip == 7:
-                inst = 's'
-            else:
-                inst = 'i'
-
-            print inst
-            """
-            #Ant: Reducing the Hybrid_Region_Str to a region shape
-            print "Extracting soft X-rays for source " + str(i+1) + " in obsid " + obsid + "..."
-            Hybrid_Region_Str_Reduced_Split_L=re.split("[; ]",Hybrid_Region_Str)
-            print "Hybrid_Region_Str_Reduced_Split_L: ", Hybrid_Region_Str_Reduced_Split_L
-            Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced_Split_L[1]
-            print "Hybrid_Region_Str_Reduced: ", Hybrid_Region_Str_Reduced
-            #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
-            print "i: ", i
-            j=i
-            print "j Before: ", j
-            """
-            if(j%2!=0):
-                #j=j+1 #Ant: I lost a week to this bug...
-                j=2*j
-            """
-            j=2*j
-            print "j After: ", j
-            Hybrid_BG_Region_Outer_R_Str=Hybrid_BG_Region_Str_Reduced_L[j]
-            Hybrid_BG_Region_Outer_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Outer_R_Str)
-            Hybrid_BG_Region_Outer_R_Str_Reduced=Hybrid_BG_Region_Outer_R_Str_Reduced_L[1]
-            print "Hybrid_BG_Region_Outer_R_Str_Reduced: ", Hybrid_BG_Region_Outer_R_Str_Reduced
-            Hybrid_BG_Region_Inner_R_Str=Hybrid_BG_Region_Str_Reduced_L[j+1]
-            Hybrid_BG_Region_Inner_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Inner_R_Str)
-            Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
-            print "Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced
-            Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
-            print "Hybrid_BG_Region: ", Hybrid_BG_Region
-            # print "specextract " + obsid + " " + str(i)
-            # print "Assigning new defaults to specextract for source number " + str(i) + "..."
-            # print "Assigning infile..."
-            # os.system("pset specextract infile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + ".reg)]'")
-            # print "Assigning bkgfile..."
-            # os.system("pset specextract bkgfile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + "_bkg.reg)]'")
-            # print "Assigning output file..."
-            # os.system("pset specextract outroot='chandra_from_csc/" + str(obsid) + "/primary/extracted/extracted_3747_" + str(i) + "'")
-            # print "Correct psf..."
-            # os.system("pset specextract correctpsf=yes")
-            # print "Weight..."
-            # os.system("pset specextract weight=no")
-            # print "Running specextract..."
-            # os.system("specextract clobber=yes verbose=5")
-            # print "...done with source number " + str(i) + "!"
-
-            #ALTERNATELY (USE THIS INSTEAD SO SPECEXTRACT DOES NOT BUG YOU FOR CONFIRMATIONS):
-            print "Running specextract..."
-            print "Source " + str(i+1) + " of " + str(num) + " for obsid " + str(obsid) + "..."
-            """
-            os.system("specextract \
-            infile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + ".reg)]' \
-            bkgfile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + "_bkg.reg)]' \
-            outroot='chandra_from_csc/" + str(obsid) + "/primary/extracted/extracted_" + obsid + "_" + str(i) + "' \
-            correctpsf=yes \
-            weight=no \
-            clobber=yes \
-            verbose=1")
-            """
-            #Ant: The string syntax for this may be incorrect
-            """
-            os.system("specextract \
-            infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]\" \
-            bkgfile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]\" \
-            outroot=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra" + obsid + "_" + str(i+1) + "' \
-            correctpsf=yes \
-            weight=no \
-            clobber=yes \
-            verbose=1")
+            # tmpdir has been created and can be used in this block
+            bmap = make_tool("create_bkg_map")
+            bmap.tmpdir = tmpdir
+            ...
+            bmap(...)
             """
             """
-            os.system("specextract \
-            infile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]' \
-            bkgfile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]' \
-            outroot='/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + obsid + "_" + str(i+1) + "' \
-            correctpsf=yes \
-            weight=no \
-            clobber=yes \
-            verbose=1")
+            print "Beginning specextract for obsid " + str(obsid)
+            obsid = str(obsid)
+            print "Getting name of evt2 file..."
+            name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
+            print name
+            print "Shortening name..."
+            name = name[0][-24:]
+            print name
+            print "Unlearning specextract..."
+            os.system("punlearn specextract")
+            print "Getting system path..."
+            path = '/Volumes/xray/spirals/trace/' + obsid + '/'
+            print "Getting number of files in the current obsid's directory..."
+            num_files = len([f for f in os.listdir(path)
+                        if os.path.isfile(os.path.join(path, f))])
+            print str(num_files) + " files found..."
+            num = int((num_files-4)/5)
+            print str(num) + " sources to be extracted..."
             """
-
-            #Ant Note: dmcoords(infile=str(evtfpath),chipx=BG_X, chipy=BG_Y, chip_id=Chip_ID_Test, option='chip', verbose=0)
-            Infile_Str="/Volumes/xray/simon/all_chandra_observations/" + str(obsid) + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]"
-            Bkgfile_Str="/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]"
-            Outroot_Str="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
-            Outroot_Str_Test="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra_Test/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
-            #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", verbose=1)
-            #Ant Note: ah = rt.make_tool("asphist")
+            obsid = str(obsid)
+            print "Beginning flux extraction for obsid " + obsid + "..."
+            print "Getting name of evt2 file..."
+            ##name = glob.glob("chandra_from_csc/" + obsid + "/primary/*_evt2.fits")
+            Evt2_Fpath_L = glob.glob("/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/*_evt2.fit*")
+            Evt2_Fpath=Evt2_Fpath_L[0]
+            print "Evt2_Fpath: ", Evt2_Fpath
+            ##print "Shortening name..."
+            #Ant: This is done only for an exact directory on a computer not used anymore. It must be modified to create the shortened filename from an arbitary filepath
+            ##name = name[0][-24:]
+            name_L=Evt2_Fpath.split("/")
+            print "name_L: ", name_L
+            name=name_L[len(name_L)-1]
+            print name
+            Hybrid_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid.reg"
+            Hybrid_File=open(Hybrid_Filepath)
+            Hybrid_Region_Str=Hybrid_File.read()
+            Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
+            Hybrid_Region_Str_L=Hybrid_Region_Str.split(Header_String)
+            Hybrid_Region_Str_Reduced=Hybrid_Region_Str_L[1]
+            #print "Hybrid_Region_Str_Reduced:\n", Hybrid_Region_Str_Reduced
+            Hybrid_Region_Str_Reduced_L=Hybrid_Region_Str_Reduced.split("\n")
+            #print "Hybrid_Region_Str_Reduced_L: ", Hybrid_Region_Str_Reduced_L
+            #print "len(Hybrid_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_Region_Str_Reduced_L)
+            Hybrid_Region_Str_Reduced_L.pop(len(Hybrid_Region_Str_Reduced_L)-1)
+            num=len(Hybrid_Region_Str_Reduced_L)
+            print "num: ", num
+            ##print "Unlearning specextract..."
+            ##os.system("punlearn specextract")
+            #print "Getting system path..."
+            Hybrid_BG_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid_Background.reg"
+            Hybrid_BG_File=open(Hybrid_BG_Filepath)
+            Hybrid_BG_Region_Str=Hybrid_BG_File.read()
+            Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
+            Hybrid_BG_Region_Str_L=Hybrid_BG_Region_Str.split(Header_String)
+            Hybrid_BG_Region_Str_Reduced=Hybrid_BG_Region_Str_L[1]
+            #print "Hybrid_BG_Region_Str_Reduced:\n", Hybrid_BG_Region_Str_Reduced
+            Hybrid_BG_Region_Str_Reduced_L=Hybrid_BG_Region_Str_Reduced.split("\n")
+            #print "Hybrid_BG_Region_Str_Reduced_L: ", Hybrid_BG_Region_Str_Reduced_L
+            #print "len(Hybrid_BG_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_BG_Region_Str_Reduced_L)
+            Hybrid_BG_Region_Str_Reduced_L.pop(len(Hybrid_BG_Region_Str_Reduced_L)-1)
+            #for Hybrid_BG_Region_Str in Hybrid_BG_Region_Str_Reduced_L: #Ant: I need to modify this so that it itterates through the Hybrid source background regions as well!
             specextract = rt.make_tool("specextract")
-            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", verbose=1)
+            print "specextract Tool Object Before:\n", specextract
+            #specextract.tmpdir = tmpdir
+            print "tempdir: " , tmpdir
+            specextract.tmpdir = tmpdir
+            print "specextract Tool Object After:\n", specextract
+            #for i in range(1,num+1):
+            for i in range(0,num):
+                Hybrid_Region_Str=Hybrid_Region_Str_Reduced_L[i]
+                print "Hybrid_Region_Str: ", Hybrid_Region_Str
+                Hybrid_Region_Str_L=re.split("[(),]", Hybrid_Region_Str)
+                print "Hybrid_Region_Str_L: ", Hybrid_Region_Str_L
+                """
+                x_str=Hybrid_Region_Str_L[1]
+                x=float(x_str)
+                y_str=Hybrid_Region_Str_L[2]
+                y=float(y_str)
+                print "Got x and y values..."
+                print "punlearn dmcoords..."
+                os.system("punlearn dmcoords")
+                print "running dmcoords..."
+                #print "dmcoords '/Volumes/xray/simon/chandra_from_csc/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg"
+                os.system("dmcoords '/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "' option=sky x=" + str(x) + " y=" + str(y) + " celfmt=deg")
+                print "Getting Chip ID..."
+                chip = sp.check_output("pget dmcoords chip_id", shell=True)
+                chip = int(chip)
+                print "Got Chip ID: " + str(chip)
+
+                if chip == 5 or chip == 7:
+                    inst = 's'
+                else:
+                    inst = 'i'
+
+                print inst
+                """
+                #Ant: Reducing the Hybrid_Region_Str to a region shape
+                print "Extracting soft X-rays for source " + str(i+1) + " in obsid " + obsid + "..."
+                Hybrid_Region_Str_Reduced_Split_L=re.split("[; ]",Hybrid_Region_Str)
+                print "Hybrid_Region_Str_Reduced_Split_L: ", Hybrid_Region_Str_Reduced_Split_L
+                Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced_Split_L[1]
+                print "Hybrid_Region_Str_Reduced: ", Hybrid_Region_Str_Reduced
+                #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
+                print "i: ", i
+                j=i
+                print "j Before: ", j
+                """
+                if(j%2!=0):
+                    #j=j+1 #Ant: I lost a week to this bug...
+                    j=2*j
+                """
+                j=2*j
+                print "j After: ", j
+                Hybrid_BG_Region_Outer_R_Str=Hybrid_BG_Region_Str_Reduced_L[j]
+                Hybrid_BG_Region_Outer_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Outer_R_Str)
+                Hybrid_BG_Region_Outer_R_Str_Reduced=Hybrid_BG_Region_Outer_R_Str_Reduced_L[1]
+                print "Hybrid_BG_Region_Outer_R_Str_Reduced: ", Hybrid_BG_Region_Outer_R_Str_Reduced
+                Hybrid_BG_Region_Inner_R_Str=Hybrid_BG_Region_Str_Reduced_L[j+1]
+                Hybrid_BG_Region_Inner_R_Str_Reduced_L=re.split("[; ]",Hybrid_BG_Region_Inner_R_Str)
+                Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
+                print "Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced
+                Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
+                print "Hybrid_BG_Region: ", Hybrid_BG_Region
+                # print "specextract " + obsid + " " + str(i)
+                # print "Assigning new defaults to specextract for source number " + str(i) + "..."
+                # print "Assigning infile..."
+                # os.system("pset specextract infile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + ".reg)]'")
+                # print "Assigning bkgfile..."
+                # os.system("pset specextract bkgfile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + "_bkg.reg)]'")
+                # print "Assigning output file..."
+                # os.system("pset specextract outroot='chandra_from_csc/" + str(obsid) + "/primary/extracted/extracted_3747_" + str(i) + "'")
+                # print "Correct psf..."
+                # os.system("pset specextract correctpsf=yes")
+                # print "Weight..."
+                # os.system("pset specextract weight=no")
+                # print "Running specextract..."
+                # os.system("specextract clobber=yes verbose=5")
+                # print "...done with source number " + str(i) + "!"
+
+                #ALTERNATELY (USE THIS INSTEAD SO SPECEXTRACT DOES NOT BUG YOU FOR CONFIRMATIONS):
+                print "Running specextract..."
+                print "Source " + str(i+1) + " of " + str(num) + " for obsid " + str(obsid) + "..."
+                """
+                os.system("specextract \
+                infile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + ".reg)]' \
+                bkgfile='chandra_from_csc/" + str(obsid) + "/primary/" + str(name) + "[sky=region(/Volumes/xray/spirals/trace/" + str(obsid) + "/" + str(i) + "_bkg.reg)]' \
+                outroot='chandra_from_csc/" + str(obsid) + "/primary/extracted/extracted_" + obsid + "_" + str(i) + "' \
+                correctpsf=yes \
+                weight=no \
+                clobber=yes \
+                verbose=1")
+                """
+                #Ant: The string syntax for this may be incorrect
+                """
+                os.system("specextract \
+                infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]\" \
+                bkgfile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]\" \
+                outroot=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra" + obsid + "_" + str(i+1) + "' \
+                correctpsf=yes \
+                weight=no \
+                clobber=yes \
+                verbose=1")
+                """
+                """
+                os.system("specextract \
+                infile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]' \
+                bkgfile='/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]' \
+                outroot='/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + obsid + "_" + str(i+1) + "' \
+                correctpsf=yes \
+                weight=no \
+                clobber=yes \
+                verbose=1")
+                """
+
+                #Ant Note: dmcoords(infile=str(evtfpath),chipx=BG_X, chipy=BG_Y, chip_id=Chip_ID_Test, option='chip', verbose=0)
+                Infile_Str="/Volumes/xray/simon/all_chandra_observations/" + str(obsid) + "/primary/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]"
+                Bkgfile_Str="/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[sky="+Hybrid_BG_Region+"]"
+                Outroot_Str="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
+                Outroot_Str_Test="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/extracted_spectra_Test/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
+                #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", verbose=1)
+                #Ant Note: ah = rt.make_tool("asphist")
+                """
+                specextract = rt.make_tool("specextract")
+                print "specextract Tool Object: ", specextract
+                #specextract.tmpdir = tmpdir
+                print "tempdir: " , tmpdir
+                """
+                specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
 
 ##if __name__ == '__main__':
 def Driver(obsid_L):
@@ -267,5 +286,7 @@ def Main():
     #Driver([6096])
     #Driver([1971])
     Driver([6096, 1971, 1972, 768])
+    #Driver([6096, 1971])
+    #Driver([1972])
 
 Main()
