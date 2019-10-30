@@ -12,8 +12,7 @@ Fit_Spectrum
 /Specextract/extracted_spectra
 /Specextract/extracted_spectra_old/
 /Specextract/extracted_spectra_Test/
-/Specextract/._Error_Sources
-/Specextract/Error_Sources
+Specextract/Error_Testing/
 Test_IDL_Code
 Run
 Run_Old
