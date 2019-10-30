@@ -18,6 +18,7 @@ from multiprocessing import Pool
 #from done_email import when_done
 
 def spec(obsid):
+    Error_List=[]
     with rt.new_pfiles_environment(ardlib=True):
         with new_tmpdir() as tmpdir:
             """
@@ -215,7 +216,26 @@ def spec(obsid):
                 #specextract.tmpdir = tmpdir
                 print "tempdir: " , tmpdir
                 """
-                specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                print "Infile_Str: ", Infile_Str
+                print "Bkgfile_St: ", Bkgfile_Str
+                print "Outroot_Str_Test: ", Outroot_Str_Test
+                print "tempdir In: ", tmpdir
+                #Temp_Files = glob.glob(tmpdir+"| grep 'asphist'")
+                #Temp_Files = glob.glob(tmpdir+"/*")
+                #print "Temp_Files:\n", Temp_Files
+                """
+                with open(tmpdir, 'r') as f:
+                    read_data = f.read()
+                    f.closed
+                """
+                try:
+                    specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                except:
+                    Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str_Test, tmpdir]
+                    Error_List.append(Cur_Error_L)
+
+    print "Error_List: ", Error_List
+
 
 ##if __name__ == '__main__':
 def Driver(obsid_L):
