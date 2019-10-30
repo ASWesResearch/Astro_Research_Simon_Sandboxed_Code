@@ -218,7 +218,8 @@ def spec(obsid):
                 """
                 print "Infile_Str: ", Infile_Str
                 print "Bkgfile_St: ", Bkgfile_Str
-                print "Outroot_Str_Test: ", Outroot_Str_Test
+                #print "Outroot_Str_Test: ", Outroot_Str_Test
+                print "Outroot_Str: ", Outroot_Str
                 print "tempdir In: ", tmpdir
                 #Temp_Files = glob.glob(tmpdir+"| grep 'asphist'")
                 #Temp_Files = glob.glob(tmpdir+"/*")
@@ -229,7 +230,8 @@ def spec(obsid):
                     f.closed
                 """
                 try:
-                    specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                    #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                    specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                 except:
                     Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str_Test, tmpdir]
                     Error_List.append(Cur_Error_L)
@@ -290,7 +292,7 @@ def Driver(obsid_L):
     """
     #Ant: Multiprocessing to make it stop
     if __name__ == '__main__':
-        P = Pool(4)
+        P = Pool(8)
         P.map(spec, obsid_L)
 
     #when_done("specextract") #Ant: Disabled to not accidently email Simon
@@ -305,8 +307,12 @@ def Main():
     #Parallelization Testing
     #Driver([6096])
     #Driver([1971])
-    Driver([6096, 1971, 1972, 768])
+    #Driver([6096, 1971, 1972, 768])
     #Driver([6096, 1971])
     #Driver([1972])
+    #Parallelization
+    #[4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552]
+    Driver([4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
+
 
 Main()
