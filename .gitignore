@@ -1,5 +1,7 @@
 *.inp
 *.csv
+*.png
+*.pdf
 Simon_Original_Code
 Counts_Info
 Fit_Spectrum
