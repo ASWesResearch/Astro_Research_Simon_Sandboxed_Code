@@ -17,6 +17,7 @@ Test_IDL_Code
 Run
 Run_Old
 Flux_Calc/Source_Fluxes
+Flux_Calc/Source_Fluxes_Test/
 BEHR/._hipd_interval.pro
 BEHR/BEHR_Source_Code/
 BEHR/hipd_interval.pro
