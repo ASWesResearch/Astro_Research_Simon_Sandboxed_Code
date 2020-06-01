@@ -257,6 +257,12 @@ def Inside_FOV_Bool_Calc(ObsID,Source_Num):
         return True
     else:
         return False
+def Offaxis_Angle_Calc(ObsID,Source_Num):
+    Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
+    Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
+    #print Hybrid_Sources_Data
+    Offaxis_Angle=Hybrid_Sources_Data.iloc[Source_Num-1]["Offaxis_Angle"]
+    return Offaxis_Angle
 def RA_DEC_Calc(ObsID,Source_Num):
     Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
     Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
@@ -264,6 +270,38 @@ def RA_DEC_Calc(ObsID,Source_Num):
     RA=Hybrid_Sources_Data.iloc[Source_Num-1]["RA"]
     Dec=Hybrid_Sources_Data.iloc[Source_Num-1]["DEC"]
     return RA, Dec
+def Distance_From_GC_Calc(ObsID,Source_Num):
+    Source_RA,Source_DEC=RA_DEC_Calc(ObsID,Source_Num)
+    Source_RA_Arcmin=Source_RA*60.0
+    Source_DEC_Arcmin=Source_DEC*60.0
+    GC_RA,GC_DEC=GC_Query(ObsID)
+    GC_RA_Arcmin=GC_RA*60.0
+    GC_DEC_Arcmin=GC_DEC*60.0
+    dist=np.sqrt(((GC_DEC_Arcmin-Source_DEC_Arcmin)**2.0)+((GC_RA_Arcmin-Source_RA_Arcmin)**2.0))
+    return dist
+def Outside_D25_Bool_Calc(ObsID,Source_Num):
+    D25_S_Maj_Arcmin=D25_Query(ObsID)
+    Dist_Arcmin=Distance_From_GC_Calc(ObsID,Source_Num)
+    Outside_D25_Bool=(float(Dist_Arcmin)>float(D25_S_Maj_Arcmin))
+    return Outside_D25_Bool
+def Distance_Galatic_Center_to_Aimpoint_Calc(ObsID):
+    #pass
+    GC_RA,GC_DEC=GC_Query(ObsID)
+    #GC_RA_Arcmin=GC_RA*60.0
+    #GC_DEC_Arcmin=GC_DEC*60.0
+    Cur_Evt2_Filepath=Evt2_File_Query(ObsID)
+    hdulist = fits.open(Cur_Evt2_Filepath)
+    #Exposure_Time=hdulist[1].header['EXPOSURE']
+    Pointing_RA=hdulist[1].header['RA_PNT']
+    Pointing_Dec=hdulist[1].header['DEC_PNT']
+    Pointing_Diff_RA=Pointing_RA-GC_RA
+    Pointing_Diff_Dec=Pointing_Dec-GC_DEC
+    Dist=np.sqrt((Pointing_Diff_RA**2.0)+(Pointing_Diff_Dec**2.0))
+    Dist_Arcmin=Dist*60.0
+    #Dist_L=[Cur_Evt2_ObsID,Dist_Arcmin]
+    #Dist_H_L.append(Dist_L)
+    #return Dist_H_L
+    return Dist_Arcmin
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
@@ -297,7 +335,21 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     Coords=np.vectorize(RA_DEC_Calc)(ObsID_A,Src_A)
     data["RA"]=Coords[0]
     data["DEC"]=Coords[1]
+    #Offaxis_Angle_Calc(ObsID,Source_Num)
+    data["Offaxis_Angle"]=np.vectorize(Offaxis_Angle_Calc)(ObsID_A,Src_A)
     data["Gname_Modifed"]=np.vectorize(Gname_Query)(ObsID_A)
+    #GC_Query(ObsID)
+    GC_Coords=np.vectorize(GC_Query)(ObsID_A)
+    data["RA_GC"]=GC_Coords[0]
+    data["DEC_GC"]=GC_Coords[1]
+    #D25_Query(ObsID)
+    data["D25"]=np.vectorize(D25_Query)(ObsID_A)
+    #Distance_From_GC_Calc(ObsID,Source_Num)
+    data["Source_Distance_From_GC"]=np.vectorize(Distance_From_GC_Calc)(ObsID_A,Src_A)
+    #Outside_D25_Bool_Calc(ObsID,Source_Num)
+    data["Outside_D25_Bool"]=np.vectorize(Outside_D25_Bool_Calc)(ObsID_A,Src_A)
+    #Distance_Galatic_Center_to_Aimpoint_Calc(ObsID)
+    data["Distance_GC_to_Aimpoint"]=np.vectorize(Distance_Galatic_Center_to_Aimpoint_Calc)(ObsID_A)
     #with pd.option_context('display.max_rows', None):  # more options can be specified also
         #print "data:\n", data
     print "data:\n", data
@@ -311,9 +363,17 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #print "data:\n", data.loc(data['Flux_Cut_Bool[.3-7.5]']==True)
     #print "data:\n", data.loc(True)
     #print data['Flux_Cut_Bool[.3-7.5]'].loc(True)
-def Data_Analysis(fpath):
+def Data_Analysis(fpath,Outside_D25_Bool=False):
     data=pd.read_csv(fpath)
-    print "data:\n", data.columns
+    if(Outside_D25_Bool==True):
+        #data=data.drop(data[data.Outside_D25_Bool==False].index, inplace=True)
+        #new_dataframe = a_dataframe[a_dataframe.B <= 3]
+        data=data[data.Outside_D25_Bool]
+        data=data.reset_index(drop=True)
+    print "data.columns:\n", data.columns
+    #print "data:\n", data
+    with pd.option_context('display.max_columns', None):  # more options can be specified also
+        print "data:\n", data
     Test_Bool=False
     Flux_A=data['Flux[.3-7.5]']
     Flux_Avg=Flux_A.mean()
@@ -338,6 +398,9 @@ def Data_Analysis(fpath):
             n=n+1
     print Test_Bool
     print n
+    #Outside_D25_Bool_A=data["Outside_D25_Bool"]
+    #a_dataframe.drop(a_dataframe[a_dataframe.B > 3].index, inplace=True)
+    #data.drop(data[data.Outside_D25_Bool==False].index, inplace=True)
     #plt.plot(Limiting_Flux_A,Flux_A,".")
     #"""
     plt.loglog(Limiting_Flux_A,Flux_A,".",label="Source_Flux")
@@ -345,8 +408,8 @@ def Data_Analysis(fpath):
     plt.xlabel("Limiting_Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("Flux (erg/cm**2/s absorbed flux)")
     plt.legend()
-    #plt.show()
-    plt.savefig("Source_Flux_Vs_Limiting_Flux.pdf")
+    plt.show()
+    ##plt.savefig("Source_Flux_Vs_Limiting_Flux.pdf")
     plt.clf()
     #"""
     #plt.hist(Limiting_Flux_A)
@@ -357,19 +420,26 @@ def Data_Analysis(fpath):
     plt.xlabel("Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("Number of Fluxes")
     plt.legend()
-    #plt.show()
-    plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
+    plt.show()
+    ##plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
 
 #Exposure_Time_Calc(12095)
 #Gname_Query(12095)
 #print Gname_Query(6869)
 #print GC_Query(12095)
-print D25_Query(12095)
+#print D25_Query(12095)
 #Source_Known_Flux_Finder(12095,1)
 #print Limiting_Flux_Calc(12095,1)
 #print Limiting_Flux_Calc(12095,5)
 #print Limiting_Flux_Calc(2197,5)
 #print Limiting_Flux_Calc(6869,1)
+#print Distance_From_GC_Calc(12095,5)
+#print Outside_D25_Bool_Calc(12095,5)
+#print Distance_From_GC_Calc(12095,20)
+#print Outside_D25_Bool_Calc(12095,20)
+#print Distance_Galatic_Center_to_Aimpoint_Calc(12095)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
