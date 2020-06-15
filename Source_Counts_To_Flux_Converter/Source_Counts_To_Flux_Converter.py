@@ -18,20 +18,51 @@ def Evt2_File_Query(ObsID):
         return "Error"
     evtfpath=evtfpath_L[0]
     return evtfpath
-def Gname_Query(ObsID):
+def Gname_Query(ObsID,NED_Resolved_Bool=False):
     #query_path='/Volumes/xray/simon/all_chandra_observations/'+str(ObsID)+'/primary/*evt2*'
-    Flux_90_Fpath_L=glob.glob("/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/*/Flux_90_Files/"+str(ObsID)+"/*_Flux_90.txt")
-    if(len(Flux_90_Fpath_L)!=1):
-        #print str(ObsID)+" has "+str(len(Flux_90_Fpath_L)-1)+"Additional Flux 90 Files ! ! !"
-        print str(ObsID)+" has "+str(len(Flux_90_Fpath_L))+" Flux 90 Files ! ! !"
-        return "Error"
-    Flux_90_Fpath=Flux_90_Fpath_L[0]
-    Gname=Flux_90_Fpath.split("/")[7]
-    #print "Gname: ", Gname
-    return Gname
+    if(NED_Resolved_Bool==False):
+        Flux_90_Fpath_L=glob.glob("/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/*/Flux_90_Files/"+str(ObsID)+"/*_Flux_90.txt")
+        if(len(Flux_90_Fpath_L)!=1):
+            #print str(ObsID)+" has "+str(len(Flux_90_Fpath_L)-1)+"Additional Flux 90 Files ! ! !"
+            print str(ObsID)+" has "+str(len(Flux_90_Fpath_L))+" Flux 90 Files ! ! !"
+            return "Error"
+        Flux_90_Fpath=Flux_90_Fpath_L[0]
+        Gname=Flux_90_Fpath.split("/")[7]
+        #print "Gname: ", Gname
+        return Gname
+    if(NED_Resolved_Bool):
+        Obs_ID=int(ObsID)
+        path_Source_Flux_Table=os.path.realpath('/Volumes/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_Table.csv') #Absolute Path
+        #print "path_Source_Flux_Table : ", path_Source_Flux_Table
+        Source_Flux_Table=ascii.read(path_Source_Flux_Table)
+        #print "Source_Flux_Table : \n", Source_Flux_Table
+        Obs_ID_A=Source_Flux_Table["OBSID"]
+        Obs_ID_L=list(Obs_ID_A)
+        #print "Obs_ID_L : ", Obs_ID_L
+        Obs_ID_Inx=Obs_ID_L.index(Obs_ID)
+        #print "Obs_ID_Inx : ", Obs_ID_Inx
+        Resolved_Name_A=Source_Flux_Table["resolvedObject"]
+        #print "Resolved_Name_A : ", Resolved_Name_A
+        Resolved_Name_L=list(Resolved_Name_A)
+        #print "Resolved_Name_L : ", Resolved_Name_L
+        Resolved_Name=Resolved_Name_L[Obs_ID_Inx]
+        return Resolved_Name
 def GC_Query(ObsID):
+    #print "ObsID: ", ObsID
     Gname=Gname_Query(ObsID)
-    G_Data= Ned.query_object(Gname) #G_Data:-astropy.table.table.Table, Galaxy_Data, The Galaxy Data Table queried from NED
+    print "Gname: ", Gname
+    print "ObsID: ", ObsID
+    if(Gname=="Error"):
+        print "Error Gname: ", Gname
+        #return "Error","Error"
+        return np.nan,np.nan
+    try:
+        #print "NED Gname: ", Gname
+        G_Data= Ned.query_object(Gname) #G_Data:-astropy.table.table.Table, Galaxy_Data, The Galaxy Data Table queried from NED
+    except:
+        Gname=Gname_Query(ObsID,NED_Resolved_Bool=True)
+        #print "NED Gname: ", Gname
+        G_Data= Ned.query_object(Gname) #G_Data:-astropy.table.table.Table, Galaxy_Data, The Galaxy Data Table queried from NED
     #print G_Data
     try:
         raGC=float(G_Data['RA(deg)'])
@@ -42,7 +73,7 @@ def GC_Query(ObsID):
     return raGC, decGC
 
 def D25_Query(ObsID):
-    Gname=Gname_Query(ObsID)
+    ##Gname=Gname_Query(ObsID)
     #Evt2_File_H_L=File_Query_Code_5.File_Query(Gname,"evt2")
     #print "Evt2_File_H_L : ", Evt2_File_H_L
     #Evt2_File_L=Evt2_File_H_L[0]
@@ -275,6 +306,9 @@ def Distance_From_GC_Calc(ObsID,Source_Num):
     Source_RA_Arcmin=Source_RA*60.0
     Source_DEC_Arcmin=Source_DEC*60.0
     GC_RA,GC_DEC=GC_Query(ObsID)
+    #if(GC_RA=="Error"):
+    if(GC_RA==np.nan):
+        return
     GC_RA_Arcmin=GC_RA*60.0
     GC_DEC_Arcmin=GC_DEC*60.0
     dist=np.sqrt(((GC_DEC_Arcmin-Source_DEC_Arcmin)**2.0)+((GC_RA_Arcmin-Source_RA_Arcmin)**2.0))
@@ -287,6 +321,9 @@ def Outside_D25_Bool_Calc(ObsID,Source_Num):
 def Distance_Galatic_Center_to_Aimpoint_Calc(ObsID):
     #pass
     GC_RA,GC_DEC=GC_Query(ObsID)
+    #if(GC_RA=="Error"):
+    if(GC_RA==np.nan):
+        return
     #GC_RA_Arcmin=GC_RA*60.0
     #GC_DEC_Arcmin=GC_DEC*60.0
     Cur_Evt2_Filepath=Evt2_File_Query(ObsID)
@@ -408,8 +445,11 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     plt.xlabel("Limiting_Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("Flux (erg/cm**2/s absorbed flux)")
     plt.legend()
-    plt.show()
-    ##plt.savefig("Source_Flux_Vs_Limiting_Flux.pdf")
+    #plt.show()
+    if(Outside_D25_Bool):
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Outside_D25.pdf")
+    else:
+        plt.savefig("Source_Flux_Vs_Limiting_Flux.pdf")
     plt.clf()
     #"""
     #plt.hist(Limiting_Flux_A)
@@ -420,13 +460,21 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     plt.xlabel("Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("Number of Fluxes")
     plt.legend()
-    plt.show()
-    ##plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
+    #plt.show()
+    if(Outside_D25_Bool):
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram_Outside_D25.pdf")
+    else:
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
 
 #Exposure_Time_Calc(12095)
 #Gname_Query(12095)
 #print Gname_Query(6869)
 #print GC_Query(12095)
+#print GC_Query(6869)
+#5905
+#print GC_Query(5905)
+#9552
+#print GC_Query(9552)
 #print D25_Query(12095)
 #Source_Known_Flux_Finder(12095,1)
 #print Limiting_Flux_Calc(12095,1)
@@ -434,12 +482,15 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
 #print Limiting_Flux_Calc(2197,5)
 #print Limiting_Flux_Calc(6869,1)
 #print Distance_From_GC_Calc(12095,5)
+#print Distance_From_GC_Calc(6869,5)
 #print Outside_D25_Bool_Calc(12095,5)
 #print Distance_From_GC_Calc(12095,20)
 #print Outside_D25_Bool_Calc(12095,20)
 #print Distance_Galatic_Center_to_Aimpoint_Calc(12095)
+#print Distance_Galatic_Center_to_Aimpoint_Calc(6869)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
+Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
