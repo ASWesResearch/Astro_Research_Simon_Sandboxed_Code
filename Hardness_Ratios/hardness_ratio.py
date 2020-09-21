@@ -261,6 +261,7 @@ def src_flux(obsid):
     bkgAreaMed = []
     bkgAreaHard = []
 
+    """
     Hybrid_BG_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/"+str(obsid)+"_Nearest_Neighbor_Hybrid_Background.reg"
     Hybrid_BG_File=open(Hybrid_BG_Filepath)
     Hybrid_BG_Region_Str=Hybrid_BG_File.read()
@@ -272,6 +273,7 @@ def src_flux(obsid):
     #print "Hybrid_BG_Region_Str_Reduced_L: ", Hybrid_BG_Region_Str_Reduced_L
     #print "len(Hybrid_BG_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_BG_Region_Str_Reduced_L)
     Hybrid_BG_Region_Str_Reduced_L.pop(len(Hybrid_BG_Region_Str_Reduced_L)-1)
+    """
     #for Hybrid_BG_Region_Str in Hybrid_BG_Region_Str_Reduced_L: #Ant: I need to modify this so that it itterates through the Hybrid source background regions as well!
     for i in range(0,num):
         Hybrid_Region_Str=Hybrid_Region_Str_Reduced_L[i]
@@ -307,13 +309,16 @@ def src_flux(obsid):
         Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced_Split_L[1]
         print "Hybrid_Region_Str_Reduced: ", Hybrid_Region_Str_Reduced
         #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
+        """
         print "i: ", i
         j=i
         print "j Before: ", j
         """
+        """
         if(j%2!=0):
             #j=j+1 #Ant: I lost a week to this bug...
             j=2*j
+        """
         """
         j=2*j
         print "j After: ", j
@@ -326,7 +331,30 @@ def src_flux(obsid):
         Hybrid_BG_Region_Inner_R_Str_Reduced=Hybrid_BG_Region_Inner_R_Str_Reduced_L[1]
         print "Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced
         Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
-        print "Hybrid_BG_Region: ", Hybrid_BG_Region
+        """
+        print "i: ", i
+        Source_Num=i+1
+        print "Source_Num: ", Source_Num
+        #/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/10125/Individual_Source_Regions/Source_1_ObsID_10125_Nearest_Neighbor_Hybrid_Overlap_Corrected_Background.reg
+        Hybrid_BG_Filepath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(obsid)+"/Individual_Source_Regions/Source_"+str(Source_Num)+"_ObsID_"+str(obsid)+"_Nearest_Neighbor_Hybrid_Overlap_Corrected_Background.reg"
+        print "Hybrid_BG_Filepath: ", Hybrid_BG_Filepath
+        #print "Hybrid_BG_Region: ", Hybrid_BG_Region
+
+        Hybrid_BG_File=open(Hybrid_BG_Filepath)
+        Hybrid_BG_Region_Str=Hybrid_BG_File.read()
+        Hybrid_BG_File.close()
+        Header_String='# Region file format: DS9 version 3.0\nglobal color=blue font="helvetica 10 normal" select=1 edit=1 move=1 delete=1 include=1 fixed=0\n'
+        Hybrid_BG_Region_Str_L=Hybrid_BG_Region_Str.split(Header_String)
+        Hybrid_BG_Region_Str_Reduced=Hybrid_BG_Region_Str_L[1]
+        #print "Hybrid_BG_Region_Str_Reduced:\n", Hybrid_BG_Region_Str_Reduced
+        Hybrid_BG_Region_Str_Reduced_L=Hybrid_BG_Region_Str_Reduced.split("\n")
+        #print "Hybrid_BG_Region_Str_Reduced_L: ", Hybrid_BG_Region_Str_Reduced_L
+        #print "len(Hybrid_BG_Region_Str_Reduced_L) Before Pop: ", len(Hybrid_BG_Region_Str_Reduced_L)
+        Hybrid_BG_Region_Str_Reduced_L.pop(len(Hybrid_BG_Region_Str_Reduced_L)-1)
+        Hybrid_BG_Region=""
+        for Region in Hybrid_BG_Region_Str_Reduced_L:
+            Region_Reduced=re.split("[; ]",Region)[1]
+            Hybrid_BG_Region=Hybrid_BG_Region+Region_Reduced
         #Ant: Calculating the area of the current Hybrid source region
         #shape1 ='circle(' + str(X_Phys) +','+ str(Y_Phys)+','+ str(cur_r)+')' #shape1:-str, shape1, The shape string of the current area circle
         shape1=Hybrid_Region_Str_Reduced
@@ -356,7 +384,7 @@ def src_flux(obsid):
         infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky="+Hybrid_Region_Str_Reduced+"]\" \
         outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_softcounts.fits\" \
         opt=generic \
-        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky="+Hybrid_BG_Region+"]\" \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=300:1000][sky=region("+str(Hybrid_BG_Filepath)+")]\" \
         clobber=no")
 
         #Getting counts
@@ -394,7 +422,7 @@ def src_flux(obsid):
         infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky="+Hybrid_Region_Str_Reduced+"]\" \
         outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_medcounts.fits\" \
         opt=generic \
-        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky="+Hybrid_BG_Region+"]\" \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=1000:2100][sky=region("+str(Hybrid_BG_Filepath)+")]\" \
         clobber=no")
 
         #Getting counts
@@ -432,7 +460,7 @@ def src_flux(obsid):
         infile=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky="+Hybrid_Region_Str_Reduced+"]\" \
         outfile=\"/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_hardcounts.fits\" \
         opt=generic \
-        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky="+Hybrid_BG_Region+"]\" \
+        bkg=\"/Volumes/xray/simon/all_chandra_observations/" + obsid + "/primary/" + str(name) + "[energy=2100:7500][sky=region("+str(Hybrid_BG_Filepath)+")]\" \
         clobber=no")
 
         #Getting counts
