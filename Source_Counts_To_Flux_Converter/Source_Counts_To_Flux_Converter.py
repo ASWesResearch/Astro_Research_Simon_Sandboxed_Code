@@ -50,8 +50,8 @@ def Gname_Query(ObsID,NED_Resolved_Bool=False):
 def GC_Query(ObsID):
     #print "ObsID: ", ObsID
     Gname=Gname_Query(ObsID)
-    print "Gname: ", Gname
-    print "ObsID: ", ObsID
+    #print "Gname: ", Gname
+    #print "ObsID: ", ObsID
     if(Gname=="Error"):
         print "Error Gname: ", Gname
         #return "Error","Error"
@@ -343,11 +343,16 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
     data['BKG_COUNTS[.3-7.5]']=data['BKG_COUNTS[.3-1]']+data['BKG_COUNTS[1-2.1]']+data['BKG_COUNTS[2.1-7.5]']
+    data['NET_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-7.5]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[.3-7.5]'])
+    data['NET_COUNTS[.3-1]']=data['RAW_COUNTS[.3-1]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[.3-1]'])
+    data['NET_COUNTS[1-2.1]']=data['RAW_COUNTS[1-2.1]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[1-2.1]'])
+    data['NET_COUNTS[2.1-7.5]']=data['RAW_COUNTS[2.1-7.5]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[2.1-7.5]'])
     ObsID_A=data['OBSID']
     Exposure_Time_A=ObsID_A.apply(Exposure_Time_Calc) #This works but takes to long as it unnecessarily repeats getting the exposure time for every object rather than every ObsID
     #print "Exposure_Time_A:\n", Exposure_Time_A
     data['Exposure_Time']=Exposure_Time_A
-    data['Count_Rate[.3-7.5]']=data['RAW_COUNTS[.3-7.5]']/data['Exposure_Time']
+    #data['Count_Rate[.3-7.5]']=data['RAW_COUNTS[.3-7.5]']/data['Exposure_Time'] #This should use net counts instead of raw counts!
+    data['Count_Rate[.3-7.5]']=data['NET_COUNTS[.3-7.5]']/data['Exposure_Time']
     Src_A=data['SOURCE']
     #df['new_column'] = np.vectorize(fx)(df['A'], df['B'])
     data['Known_Flux[.3-7.5]']=np.vectorize(Source_Known_Flux_Finder)(ObsID_A,Src_A)
