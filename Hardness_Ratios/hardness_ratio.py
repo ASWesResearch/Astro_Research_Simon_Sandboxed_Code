@@ -333,6 +333,9 @@ def src_flux(obsid):
         #print "shape1 : ",shape1
         r1 = regParse(shape1) #r1:-Region, Region 1, the region of the current area circle
         Cur_Source_Area = regArea(r1,0,0,8192,8192,1) #a1_cur:-float, Area_1_Current, The area of the current area circle
+        shape2=Hybrid_BG_Region
+        r2= regParse(shape2)
+        Cur_Background_Area= regArea(r2,0,0,8192,8192,1)
         directory="/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/"
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -374,10 +377,12 @@ def src_flux(obsid):
         bgCount = effectiveAreaCorrect(bgCount, cycle, 0, inst)
         bkgCountsSoft.append(bgCount)
 
+        """
         os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_softcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaSoft.append(bgArea)
-
+        """
+        bkgAreaSoft.append(Cur_Background_Area)
 
         ########################
         ###### Med X-rays ######
@@ -410,10 +415,12 @@ def src_flux(obsid):
         bgCount = effectiveAreaCorrect(bgCount, cycle, 1, inst)
         bkgCountsMed.append(bgCount)
 
+        """
         os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_medcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaMed.append(bgArea)
-
+        """
+        bkgAreaMed.append(Cur_Background_Area)
 
         #########################
         ###### Hard X-rays ######
@@ -446,9 +453,12 @@ def src_flux(obsid):
         bgCount = effectiveAreaCorrect(bgCount, cycle, 2, inst)
         bkgCountsHard.append(bgCount)
 
+        """
         os.system("dmstat '/Volumes/xray/anthony/Simon_Sandboxed_Code/Hardness_Ratios/extracted_counts_info/"+obsid+"/" + obsid + "_" + str(i+1) + "_hardcounts.fits[cols bg_area]'")
         bgArea = sp.check_output("pget dmstat out_sum", shell=True)
         bkgAreaHard.append(bgArea)
+        """
+        bkgAreaHard.append(Cur_Background_Area)
 
         obs.append(obsid)
         src.append(i+1)
@@ -558,9 +568,12 @@ def Driver(obsid_L):
                 bkgCountsSoft.append(bgcountS[j])
                 bkgCountsMed.append(bgcountM[j])
                 bkgCountsHard.append(bgcountH[j])
-                bkgAreaSoft.append(bgareaS[j][:-1])
-                bkgAreaMed.append(bgareaM[j][:-1])
-                bkgAreaHard.append(bgareaH[j][:-1])
+                #bkgAreaSoft.append(bgareaS[j][:-1])
+                bkgAreaSoft.append(bgareaS[j])
+                #bkgAreaMed.append(bgareaM[j][:-1])
+                bkgAreaMed.append(bgareaM[j])
+                #bkgAreaHard.append(bgareaH[j][:-1])
+                bkgAreaHard.append(bgareaH[j])
 
 
         except OSError:
