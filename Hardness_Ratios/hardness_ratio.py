@@ -308,8 +308,8 @@ def src_flux(obsid):
         print "Hybrid_Region_Str_Reduced_Split_L: ", Hybrid_Region_Str_Reduced_Split_L
         Hybrid_Region_Str_Reduced=Hybrid_Region_Str_Reduced_Split_L[1]
         print "Hybrid_Region_Str_Reduced: ", Hybrid_Region_Str_Reduced
-        #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
         """
+        #Ant: Parsing the parsing the Hybrid source background region file to in order to feed that input into specextract
         print "i: ", i
         j=i
         print "j Before: ", j
