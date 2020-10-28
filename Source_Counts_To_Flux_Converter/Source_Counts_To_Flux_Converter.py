@@ -405,6 +405,81 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #print "data:\n", data.loc(data['Flux_Cut_Bool[.3-7.5]']==True)
     #print "data:\n", data.loc(True)
     #print data['Flux_Cut_Bool[.3-7.5]'].loc(True)
+
+def Limiting_Flux_Model(F_L,m,F_L_E):
+    #F_L_Corrected=m*np.log10(F_L)+np.log10(F_L_E)
+    ##F_L_Corrected=m*F_L+F_L_E
+    #F_L_Corrected=m*(10.0**F_L)+(10.0**F_L_E)
+    #F_L_Corrected=m*(F_L**F_L_E)
+    ##F_L_Corrected=10.0**(m*np.log10(F_L)+np.log10(F_L_E))
+    F_L_Corrected=10.0**((m*np.log10(F_L))+np.log10(F_L_E))
+    #F_L_Corrected=10.0**(np.log10(F_L)+np.log10(F_L_E))
+
+    return F_L_Corrected
+
+#print Limiting_Flux_Model(5.18967806355e-16,0.22222222222222232,1.3666666666666667e-15)
+
+def Limiting_Flux_Model_Flux_Cut_Calc(Data,m,F_L_E,F_L_Bounds):
+    #Data_Slice=Data[(Data['Limiting_Flux[.3-7.5]']>F_L_Bounds[0]) and (Data['Limiting_Flux[.3-7.5]']<F_L_Bounds[1])]
+    Data_Slice=Data[(Data['Limiting_Flux[.3-7.5]']>F_L_Bounds[0]) & (Data['Limiting_Flux[.3-7.5]']<F_L_Bounds[1])]
+    Data_Slice=Data_Slice[Data_Slice['Flux[.3-7.5]']>0]
+    #print "F_L_Bounds: ", F_L_Bounds
+    #print "Data Slice:\n", Data_Slice['Limiting_Flux[.3-7.5]']
+    Flux_A=Data_Slice['Flux[.3-7.5]']
+    Limiting_Flux_A=Data_Slice['Limiting_Flux[.3-7.5]']
+    #print "Data Slice ({},{}): {}".format(str(F_L_Bounds[0],str(F_L_Bounds[1]),str(Limiting_Flux_A))
+    Data_Slice["Limiting_Flux_Model"]=np.vectorize(Limiting_Flux_Model)(Limiting_Flux_A,m,F_L_E)
+    Limiting_Flux_Model_A=Data_Slice["Limiting_Flux_Model"]
+    Data_Slice['Model_Flux_Cut_Bool[.3-7.5]']=np.vectorize(Flux_Cut_Bool_Calc)(Flux_A,Limiting_Flux_Model_A)
+    Model_Flux_Cut_A=Data_Slice['Model_Flux_Cut_Bool[.3-7.5]']
+    #print "Model_Flux_Cut_A:\n", Model_Flux_Cut_A
+    ##Model_Flux_Cut_Fraction=np.mean(Model_Flux_Cut_A) #Note: I don't know if NaN values effect this
+    Model_Flux_Cut_Fraction=np.nanmean(Model_Flux_Cut_A) #Note: This might fix the NaN value issue
+    return Model_Flux_Cut_Fraction, Model_Flux_Cut_A
+
+def Modified_Standard_Deviation(A,Mu=0.90):
+    N=len(A)
+    #Modified_SD=np.sqrt((np.sum((A-Mu)**2.0))/N)
+    Modified_SD=np.sqrt((np.sum((A-Mu)**2.0))/N)
+    return Modified_SD
+
+def Limiting_Flux_Model_Fitting(Data,Slope_Bounds=[-2.0,2.0],Flux_Error_Bounds=[1e-16,1e-14],Steps=200):
+    Slope_A=np.linspace(Slope_Bounds[0],Slope_Bounds[1],Steps)
+    print "Slope_A: ",Slope_A
+    ##Flux_Error_A=np.linspace(Flux_Error_Bounds[0],Flux_Error_Bounds[1],Steps)
+    Flux_Error_A=np.geomspace(Flux_Error_Bounds[0],Flux_Error_Bounds[1],Steps)
+    print "Flux_Error_A: ", Flux_Error_A
+    F_L_Bounds_Full=[5e-17,2e-15]
+    ##F_L_Bounds_A=np.linspace(F_L_Bounds_Full[0],F_L_Bounds_Full[1],10)
+    ##F_L_Bounds_A=np.linspace(F_L_Bounds_Full[0],F_L_Bounds_Full[1],20)
+    F_L_Bounds_A=np.geomspace(F_L_Bounds_Full[0],F_L_Bounds_Full[1],20)
+    F_L_Bounds_HL=[]
+    for i in range(len(F_L_Bounds_A)-1):
+        Cur_Bounds=[F_L_Bounds_A[i],F_L_Bounds_A[i+1]]
+        F_L_Bounds_HL.append(Cur_Bounds)
+    print "F_L_Bounds_HL: ", F_L_Bounds_HL
+    Min_Modified_Standard_Dev=100000000000000000
+    for Slope in Slope_A:
+        for Flux_Error in Flux_Error_A:
+            Flux_Cut_Frac_L=[]
+            Flux_Cut_Frac_HL=[]
+            for F_L_Bounds in F_L_Bounds_HL:
+                Cur_Slice_Flux_Cut=Limiting_Flux_Model_Flux_Cut_Calc(Data,Slope,Flux_Error,F_L_Bounds)
+                Cur_Slice_Flux_Cut_Frac=Cur_Slice_Flux_Cut[0]
+                Flux_Cut_Frac_L.append(Cur_Slice_Flux_Cut_Frac)
+                Flux_Cut_Frac_HL.append(Cur_Slice_Flux_Cut)
+            Flux_Cut_Frac_A=np.array(Flux_Cut_Frac_L)
+            Flux_Cut_Frac_Modified_SD=Modified_Standard_Deviation(Flux_Cut_Frac_A)
+            if(Flux_Cut_Frac_Modified_SD<Min_Modified_Standard_Dev):
+                Min_Modified_Standard_Dev=Flux_Cut_Frac_Modified_SD
+                Cur_Best_Fit_Parameters=[Slope,Flux_Error]
+                Cur_Best_Flux_Cut_Frac_L=Flux_Cut_Frac_L
+                Cur_Best_Flux_Cut_HL=Flux_Cut_Frac_HL
+    #print "Cur_Best_Flux_Cut_HL:\n", Cur_Best_Flux_Cut_HL
+    print "Cur_Best_Flux_Cut_Frac_L: ", Cur_Best_Flux_Cut_Frac_L
+    return [Cur_Best_Fit_Parameters,Min_Modified_Standard_Dev]
+
+
 def Data_Analysis(fpath,Outside_D25_Bool=False):
     data=pd.read_csv(fpath)
     if(Outside_D25_Bool==True):
@@ -416,6 +491,12 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     #print "data:\n", data
     with pd.option_context('display.max_columns', None):  # more options can be specified also
         print "data:\n", data
+    ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data)
+    ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Slope_Bounds=[0,100.0],Flux_Error_Bounds=[0,5])
+    ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,20e-16])
+    ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,40e-16])
+    Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,1e-13])
+    print "Flux_Cut_Fit: ", Flux_Cut_Fit
     Test_Bool=False
     Flux_A=data['Flux[.3-7.5]']
     Flux_Avg=Flux_A.mean()
@@ -433,13 +514,19 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
         Flux_Cut_Bool=Flux_Cut_Bool_L[i]
         if(Flux_Cut_Bool==False):
             #print "True"
-            print i
-            print "Flux: ",Flux_L[i]
-            print "Limiting_Flux: ", Limiting_Flux_L[i]
+            ##print i
+            ##print "Flux: ",Flux_L[i]
+            ##print "Limiting_Flux: ", Limiting_Flux_L[i]
             Test_Bool=True
             n=n+1
     print Test_Bool
     print n
+
+    Model_Limiting_Flux_A=Limiting_Flux_Model(Limiting_Flux_A,Flux_Cut_Fit[0][0],Flux_Cut_Fit[0][1])
+    print "Model_Limiting_Flux_A: ", Model_Limiting_Flux_A
+    #print "Flux_A[2351]: ", Flux_A[2351]
+    #print "Limiting_Flux_A[2351]: ", Limiting_Flux_A[2351]
+    #print "Model_Limiting_Flux_A[2351]: ", Model_Limiting_Flux_A[2351]
     #Outside_D25_Bool_A=data["Outside_D25_Bool"]
     #a_dataframe.drop(a_dataframe[a_dataframe.B > 3].index, inplace=True)
     #data.drop(data[data.Outside_D25_Bool==False].index, inplace=True)
@@ -447,6 +534,15 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     #"""
     plt.loglog(Limiting_Flux_A,Flux_A,".",label="Source_Flux")
     plt.loglog(Limiting_Flux_A,Limiting_Flux_A,label="Limiting_Flux")
+    plt.loglog(Limiting_Flux_A,Model_Limiting_Flux_A,label="Model_Limiting_Flux")
+    #"""
+    """
+    plt.plot(Limiting_Flux_A,Flux_A,".",label="Source_Flux")
+    plt.plot(Limiting_Flux_A,Limiting_Flux_A,label="Limiting_Flux")
+    plt.plot(Limiting_Flux_A,Model_Limiting_Flux_A,'.',label="Model_Limiting_Flux")
+    plt.ylim(0.0,2e-18)
+    """
+    #plt.ylim(0.0,1e-14)
     plt.xlabel("Limiting_Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("Flux (erg/cm**2/s absorbed flux)")
     plt.legend()
@@ -470,7 +566,7 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
         plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram_Outside_D25.pdf")
     else:
         plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
-
+    plt.clf()
 #Exposure_Time_Calc(12095)
 #Gname_Query(12095)
 #print Gname_Query(6869)
@@ -494,8 +590,8 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
 #print Distance_Galatic_Center_to_Aimpoint_Calc(12095)
 #print Distance_Galatic_Center_to_Aimpoint_Calc(6869)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
-Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
 Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
