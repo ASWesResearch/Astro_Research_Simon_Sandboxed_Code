@@ -480,7 +480,7 @@ def Limiting_Flux_Model_Fitting(Data,Slope_Bounds=[-2.0,2.0],Flux_Error_Bounds=[
     return [Cur_Best_Fit_Parameters,Min_Modified_Standard_Dev]
 
 
-def Data_Analysis(fpath,Outside_D25_Bool=False):
+def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ext="pdf"):
     data=pd.read_csv(fpath)
     if(Outside_D25_Bool==True):
         #data=data.drop(data[data.Outside_D25_Bool==False].index, inplace=True)
@@ -495,8 +495,9 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Slope_Bounds=[0,100.0],Flux_Error_Bounds=[0,5])
     ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,20e-16])
     ##Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,40e-16])
-    Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,1e-13])
-    print "Flux_Cut_Fit: ", Flux_Cut_Fit
+    if(Flux_Model_B):
+        Flux_Cut_Fit=Limiting_Flux_Model_Fitting(data,Flux_Error_Bounds=[1e-16,1e-13])
+        print "Flux_Cut_Fit: ", Flux_Cut_Fit
     Test_Bool=False
     Flux_A=data['Flux[.3-7.5]']
     Flux_Avg=Flux_A.mean()
@@ -521,9 +522,9 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
             n=n+1
     print Test_Bool
     print n
-
-    Model_Limiting_Flux_A=Limiting_Flux_Model(Limiting_Flux_A,Flux_Cut_Fit[0][0],Flux_Cut_Fit[0][1])
-    print "Model_Limiting_Flux_A: ", Model_Limiting_Flux_A
+    if(Flux_Model_B):
+        Model_Limiting_Flux_A=Limiting_Flux_Model(Limiting_Flux_A,Flux_Cut_Fit[0][0],Flux_Cut_Fit[0][1])
+        print "Model_Limiting_Flux_A: ", Model_Limiting_Flux_A
     #print "Flux_A[2351]: ", Flux_A[2351]
     #print "Limiting_Flux_A[2351]: ", Limiting_Flux_A[2351]
     #print "Model_Limiting_Flux_A[2351]: ", Model_Limiting_Flux_A[2351]
@@ -534,7 +535,8 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     #"""
     plt.loglog(Limiting_Flux_A,Flux_A,".",label="Source_Flux")
     plt.loglog(Limiting_Flux_A,Limiting_Flux_A,label="Limiting_Flux")
-    plt.loglog(Limiting_Flux_A,Model_Limiting_Flux_A,label="Model_Limiting_Flux")
+    if(Flux_Model_B):
+        plt.loglog(Limiting_Flux_A,Model_Limiting_Flux_A,label="Model_Limiting_Flux")
     #"""
     """
     plt.plot(Limiting_Flux_A,Flux_A,".",label="Source_Flux")
@@ -548,9 +550,9 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     plt.legend()
     #plt.show()
     if(Outside_D25_Bool):
-        plt.savefig("Source_Flux_Vs_Limiting_Flux_Outside_D25.pdf")
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Outside_D25."+Output_File_Ext)
     else:
-        plt.savefig("Source_Flux_Vs_Limiting_Flux.pdf")
+        plt.savefig("Source_Flux_Vs_Limiting_Flux."+Output_File_Ext)
     plt.clf()
     #"""
     #plt.hist(Limiting_Flux_A)
@@ -563,9 +565,9 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
     plt.legend()
     #plt.show()
     if(Outside_D25_Bool):
-        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram_Outside_D25.pdf")
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram_Outside_D25."+Output_File_Ext)
     else:
-        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram.pdf")
+        plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram."+Output_File_Ext)
     plt.clf()
 #Exposure_Time_Calc(12095)
 #Gname_Query(12095)
@@ -594,4 +596,5 @@ def Data_Analysis(fpath,Outside_D25_Bool=False):
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
-Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
