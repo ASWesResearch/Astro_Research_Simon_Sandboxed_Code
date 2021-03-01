@@ -569,6 +569,18 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
     else:
         plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram."+Output_File_Ext)
     plt.clf()
+    #For Log(N)-Log(S)
+    plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    #plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=False,histtype='step',range=(0,2.5E-15))
+    plt.xlabel("Limiting Flux (erg/cm**2/s absorbed flux)")
+    plt.ylabel("N(>S)")
+    #plt.legend()
+    #plt.show()
+    if(Outside_D25_Bool):
+        plt.savefig("LogN_LogS_Outside_D25."+Output_File_Ext)
+    else:
+        plt.savefig("LogN_LogS."+Output_File_Ext)
+    plt.clf()
 #Exposure_Time_Calc(12095)
 #Gname_Query(12095)
 #print Gname_Query(6869)
@@ -597,4 +609,5 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
-Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
+Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
