@@ -294,6 +294,50 @@ def Offaxis_Angle_Calc(ObsID,Source_Num):
     #print Hybrid_Sources_Data
     Offaxis_Angle=Hybrid_Sources_Data.iloc[Source_Num-1]["Offaxis_Angle"]
     return Offaxis_Angle
+def Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num):
+    Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
+    Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
+    #print Hybrid_Sources_Data
+    Offaxis_Angle=Hybrid_Sources_Data.iloc[Source_Num-1]["Offaxis_Angle"]
+    Offaxis_Angle_Floor=np.floor(Offaxis_Angle)
+    Offaxis_Angle_Annulus_Number=int(Offaxis_Angle_Floor)
+    return Offaxis_Angle_Annulus_Number
+def Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(ObsID,Source_Num):
+    #evtfpath_L=glob.glob(query_path)
+    #/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/NGC_3631/Area_Lists/3951/NGC_3631_acisf03951N004_evt2_Area_List.txt
+    Offaxis_Angle_Annulus_Number=Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
+    if(Offaxis_Angle_Annulus_Number>9):
+        return np.nan
+    Gname=Gname_Query(ObsID)
+    #Offaxis_Angle_Annulus_Number=Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
+    Area_List_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/"+str(Gname)+"/Area_Lists/"+str(ObsID)+"/*evt2_Area_List.txt"
+    Area_List_Path_L=glob.glob(Area_List_Query_Path)
+    if(len(Area_List_Path_L)!=1):
+        #print str(ObsID)+" has "+str(len(evtfpath_L)-1)+"Additional Evt2 Files ! ! !"
+        print str(ObsID)+" has "+str(len(Area_List_Path_L))+" Area List Files ! ! !"
+        ##return "Error"
+        return np.nan
+    Area_List_Path=Area_List_Path_L[0]
+    Area_List_Path_Data=pd.read_csv(Area_List_Path,names=["Area_Ratios"])
+    #print "Area_List_Path_Data\n", Area_List_Path_Data
+    #return Area_List_Path_Data
+    #Area_Ratio=Area_List_Path_Data[Offaxis_Angle_Annulus_Number]
+    #print "Offaxis_Angle_Annulus_Number", Offaxis_Angle_Annulus_Number
+    Area_Ratio=Area_List_Path_Data.iloc[Offaxis_Angle_Annulus_Number]
+    #print type(Area_Ratio)
+    return Area_Ratio
+def Offaxis_Angle_Annulus_Area_Calc(ObsID,Source_Num):
+    W=(1.0/60.0)
+    Offaxis_Angle_Annulus_Number=Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
+    if(Offaxis_Angle_Annulus_Number>9):
+        return np.nan
+    Annulus_Area=np.pi*(W**2.0)*((2.0*Offaxis_Angle_Annulus_Number)+1.0)
+    return Annulus_Area
+def Observed_Offaxis_Angle_Annulus_Area_Calc(ObsID,Source_Num):
+    Annulus_Area=Offaxis_Angle_Annulus_Area_Calc(ObsID,Source_Num)
+    Area_Ratio=Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(ObsID,Source_Num)
+    Observed_Offaxis_Angle_Annulus_Area=Annulus_Area*Area_Ratio
+    return Observed_Offaxis_Angle_Annulus_Area
 def RA_DEC_Calc(ObsID,Source_Num):
     Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
     Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
@@ -318,6 +362,13 @@ def Outside_D25_Bool_Calc(ObsID,Source_Num):
     Dist_Arcmin=Distance_From_GC_Calc(ObsID,Source_Num)
     Outside_D25_Bool=(float(Dist_Arcmin)>float(D25_S_Maj_Arcmin))
     return Outside_D25_Bool
+def Aimpoint_Coords_Calc(ObsID):
+    Cur_Evt2_Filepath=Evt2_File_Query(ObsID)
+    hdulist = fits.open(Cur_Evt2_Filepath)
+    #Exposure_Time=hdulist[1].header['EXPOSURE']
+    Pointing_RA=hdulist[1].header['RA_PNT']
+    Pointing_Dec=hdulist[1].header['DEC_PNT']
+    return Pointing_RA, Pointing_Dec
 def Distance_Galatic_Center_to_Aimpoint_Calc(ObsID):
     #pass
     GC_RA,GC_DEC=GC_Query(ObsID)
@@ -379,6 +430,11 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data["DEC"]=Coords[1]
     #Offaxis_Angle_Calc(ObsID,Source_Num)
     data["Offaxis_Angle"]=np.vectorize(Offaxis_Angle_Calc)(ObsID_A,Src_A)
+    #Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
+    data["Offaxis_Angle_Annulus_Number"]=np.vectorize(Offaxis_Angle_Annulus_Number_Calc)(ObsID_A,Src_A)
+    data["Offaxis_Angle_Annulus_CCD_Incompleteness"]=np.vectorize(Offaxis_Angle_Annulus_CCD_Incompleteness_Calc)(ObsID_A,Src_A)
+    data["Offaxis_Angle_Annulus_Area"]=np.vectorize(Offaxis_Angle_Annulus_Area_Calc)(ObsID_A,Src_A)
+    data["Observed_Offaxis_Angle_Annulus_Area"]=np.vectorize(Observed_Offaxis_Angle_Annulus_Area_Calc)(ObsID_A,Src_A)
     data["Gname_Modifed"]=np.vectorize(Gname_Query)(ObsID_A)
     #GC_Query(ObsID)
     GC_Coords=np.vectorize(GC_Query)(ObsID_A)
@@ -391,6 +447,10 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #Outside_D25_Bool_Calc(ObsID,Source_Num)
     data["Outside_D25_Bool"]=np.vectorize(Outside_D25_Bool_Calc)(ObsID_A,Src_A)
     #Distance_Galatic_Center_to_Aimpoint_Calc(ObsID)
+    #Aimpoint_Coords_Calc(ObsID)
+    Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
+    data["RA_Aimpoint"]=Aimpoint_Coords[0]
+    data["DEC_Aimpoint"]=Aimpoint_Coords[1]
     data["Distance_GC_to_Aimpoint"]=np.vectorize(Distance_Galatic_Center_to_Aimpoint_Calc)(ObsID_A)
     #with pd.option_context('display.max_rows', None):  # more options can be specified also
         #print "data:\n", data
@@ -418,6 +478,13 @@ def Limiting_Flux_Model(F_L,m,F_L_E):
     return F_L_Corrected
 
 #print Limiting_Flux_Model(5.18967806355e-16,0.22222222222222232,1.3666666666666667e-15)
+def Limiting_Flux_Data_Slice_Calc(Data,F_L_Bounds):
+    #Data_Slice=Data[(Data['Limiting_Flux[.3-7.5]']>F_L_Bounds[0]) and (Data['Limiting_Flux[.3-7.5]']<F_L_Bounds[1])]
+    Data_Slice=Data[(Data['Limiting_Flux[.3-7.5]']>F_L_Bounds[0]) & (Data['Limiting_Flux[.3-7.5]']<F_L_Bounds[1])]
+    Data_Slice=Data_Slice[Data_Slice['Flux[.3-7.5]']>0]
+    #print "F_L_Bounds: ", F_L_Bounds
+    #print "Data Slice:\n", Data_Slice['Limiting_Flux[.3-7.5]']
+    return Data_Slice
 
 def Limiting_Flux_Model_Flux_Cut_Calc(Data,m,F_L_E,F_L_Bounds):
     #Data_Slice=Data[(Data['Limiting_Flux[.3-7.5]']>F_L_Bounds[0]) and (Data['Limiting_Flux[.3-7.5]']<F_L_Bounds[1])]
@@ -479,6 +546,26 @@ def Limiting_Flux_Model_Fitting(Data,Slope_Bounds=[-2.0,2.0],Flux_Error_Bounds=[
     print "Cur_Best_Flux_Cut_Frac_L: ", Cur_Best_Flux_Cut_Frac_L
     return [Cur_Best_Fit_Parameters,Min_Modified_Standard_Dev]
 
+def Limiting_Flux_Area_Calc(Data,F_L_Bounds):
+    Data_Slice=Limiting_Flux_Data_Slice_Calc(Data,F_L_Bounds)
+    Data_Slice=Data_Slice.drop_duplicates(subset=["OBSID","Offaxis_Angle_Annulus_Number"])
+    Data_Slice=Data_Slice.reset_index(drop=True)
+    print "F_L_Bounds: ", F_L_Bounds
+    #with pd.option_context('display.max_columns', None):
+    #print "Limiting_Flux_Area Data_Slice:\n", Data_Slice
+    print "Limiting_Flux_Area Data_Slice:\n", Data_Slice[["OBSID","Gname_Modifed","RA","Offaxis_Angle_Annulus_Number"]]
+    Observed_Offaxis_Angle_Annulus_Area_A=Data_Slice["Observed_Offaxis_Angle_Annulus_Area"]
+    Observed_Offaxis_Angle_Annulus_Area_Sum=Observed_Offaxis_Angle_Annulus_Area_A.sum()
+    return Observed_Offaxis_Angle_Annulus_Area_Sum
+
+def Background_Source_Calc(Flux,Hardness_Str="S"):
+    if(Hardness_Str=="S"):
+        #Soft Equation
+        N=370.0*((Flux/(2.0E-15))**(-0.85)) #In sources per deg^2
+    if(Hardness_Str=="H"):
+        #Hard Equation
+        N=1200.0*((Flux/(2.0E-15))**(-1.0)) #In sources per deg^2
+    return N
 
 def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ext="pdf"):
     data=pd.read_csv(fpath)
@@ -570,11 +657,57 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
         plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram."+Output_File_Ext)
     plt.clf()
     #For Log(N)-Log(S)
-    plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    #LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    #print "LogN_LogS_Hist_A:\n", LogN_LogS_Hist
+    plt.clf()
+    LogN_LogS_Hist=LogN_LogS_Hist_A[0]
+    print "LogN_LogS_Hist:\n", LogN_LogS_Hist
+    LogN_LogS_Bins=LogN_LogS_Hist_A[1]
+    print "LogN_LogS_Bins:\n", LogN_LogS_Bins
+    print "type(LogN_LogS_Bins): ", type(LogN_LogS_Bins)
+    Limiting_Flux_Area_L=[]
+    for i in range(0,len(list(LogN_LogS_Bins))-1):
+        j=i+1
+        F_L_Bin_Bounds=[LogN_LogS_Bins[i],LogN_LogS_Bins[j]]
+        Limiting_Flux_Area=Limiting_Flux_Area_Calc(data,F_L_Bin_Bounds)
+        #print "Limiting_Flux_Area: ", Limiting_Flux_Area
+        Limiting_Flux_Area_L.append(Limiting_Flux_Area)
+    Limiting_Flux_Area_A=np.array(Limiting_Flux_Area_L)
+    print "Limiting_Flux_Area_A:\n", Limiting_Flux_Area_A
+    Limiting_Flux_Area_A_Summed=np.cumsum(Limiting_Flux_Area_A[::-1])[::-1]
+    print "Limiting_Flux_Area_A_Summed:\n", Limiting_Flux_Area_A_Summed
+    LogN_LogS_Source_Density_Hist_A=LogN_LogS_Hist/Limiting_Flux_Area_A_Summed
+    print "LogN_LogS_Source_Density_Hist_A:\n", LogN_LogS_Source_Density_Hist_A
+    LogN_LogS_Bins_A=np.array(LogN_LogS_Bins)
+    LogN_LogS_Bins_Left_Edges_A=LogN_LogS_Bins_A[:-1]
+    #plt.bar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A)
+    ##plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data")
+    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data")
+    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hist/5.0,label="Test")
+    LogN_LogS_Soft_A=Background_Source_Calc(LogN_LogS_Bins_Left_Edges_A,Hardness_Str="S")
+    #plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
+    ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
+    LogN_LogS_Hard_A=Background_Source_Calc(LogN_LogS_Bins_Left_Edges_A,Hardness_Str="H")
+    print "LogN_LogS_Hard_A:\n", LogN_LogS_Hard_A
+    ##plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
+    ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
+    """
+    Limiting_Flux_Paper_Soft_A=np.linspace(2.0E-16,3.0E-13,num=100)
+    LogN_LogS_Soft_A=Background_Source_Calc(Limiting_Flux_Paper_Soft_A,Hardness_Str="S")
+    plt.plot(Limiting_Flux_Paper_Soft_A,LogN_LogS_Soft_A)
+    print "LogN_LogS_Soft_A:\n", LogN_LogS_Soft_A
+    Limiting_Flux_Paper_Hard_A=np.linspace(2.0E-15,3.0E-14,num=100)
+    LogN_LogS_Hard_A=Background_Source_Calc(Limiting_Flux_Paper_Hard_A,Hardness_Str="H")
+    print "LogN_LogS_Hard_A:\n", LogN_LogS_Hard_A
+    plt.plot(Limiting_Flux_Paper_Hard_A,LogN_LogS_Hard_A)
+    """
     #plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=False,histtype='step',range=(0,2.5E-15))
+    ##plt.ylim(0.0,2000)
+    plt.xlim(0,2.5E-15)
     plt.xlabel("Limiting Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("N(>S)")
-    #plt.legend()
+    plt.legend()
     #plt.show()
     if(Outside_D25_Bool):
         plt.savefig("LogN_LogS_Outside_D25."+Output_File_Ext)
@@ -603,8 +736,13 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Outside_D25_Bool_Calc(12095,20)
 #print Distance_Galatic_Center_to_Aimpoint_Calc(12095)
 #print Distance_Galatic_Center_to_Aimpoint_Calc(6869)
+#print Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(12095,1)
+#print Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(12095,5)
+#print Offaxis_Angle_Annulus_Area_Calc(12095,5)
+#print Offaxis_Angle_Annulus_Area_Calc(12095,1)
+#print Observed_Offaxis_Angle_Annulus_Area_Calc(12095,5)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+##Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
