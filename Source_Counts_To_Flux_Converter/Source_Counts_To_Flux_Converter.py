@@ -390,6 +390,96 @@ def Distance_Galatic_Center_to_Aimpoint_Calc(ObsID):
     #Dist_H_L.append(Dist_L)
     #return Dist_H_L
     return Dist_Arcmin
+def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
+    #pass
+    #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
+    RA_Aimpoint_A=Data["RA_Aimpoint"]
+    RA_Aimpoint_L=list(RA_Aimpoint_A)
+    DEC_Aimpoint_A=Data["DEC_Aimpoint"]
+    DEC_Aimpoint_L=list(DEC_Aimpoint_A)
+    ObsID_A=Data['OBSID']
+    ObsID_L=list(ObsID_A)
+    #Aimpoint_Coords=data['OBSID',"RA_Aimpoint","DEC_Aimpoint"]
+    Overlapping_ObsID_HL=[]
+    Overlapping_ObsID_Bool_L=[]
+    for i in range(0,len(ObsID_L)):
+        #j=i+1
+        Overlapping_ObsID_Bool=False
+        ObsID=ObsID_L[i]
+        RA_Aimpoint=RA_Aimpoint_L[i]
+        DEC_Aimpoint=DEC_Aimpoint_L[i]
+        Overlapping_ObsID_L=[]
+        #for j in range(i+1,len(ObsID_L)):
+        for j in range(0,len(ObsID_L)):
+            ObsID_Test=ObsID_L[j]
+            if(ObsID_Test==ObsID):
+                continue
+            RA_Aimpoint_Test=RA_Aimpoint_L[j]
+            DEC_Aimpoint_Test=DEC_Aimpoint_L[j]
+            Aimpoint_Diff_RA=RA_Aimpoint-RA_Aimpoint_Test
+            Aimpoint_Diff_DEC=DEC_Aimpoint-DEC_Aimpoint_Test
+            Dist=np.sqrt((Aimpoint_Diff_RA**2.0)+(Aimpoint_Diff_DEC**2.0))
+            if(Dist<Dist_Threshold):
+                Overlapping_ObsID_Bool=True
+                #print ObsID_Test
+                Overlapping_ObsID_L.append(ObsID_Test)
+        Overlapping_ObsID_Bool_L.append(Overlapping_ObsID_Bool)
+        Overlapping_ObsID_L=list(set(Overlapping_ObsID_L))
+        Overlapping_ObsID_L_Str=str(Overlapping_ObsID_L)
+        Overlapping_ObsID_L_Str=Overlapping_ObsID_L_Str.replace(",",";")
+        Overlapping_ObsID_HL.append(Overlapping_ObsID_L_Str)
+    #Overlapping_ObsID_DF=pd.DataFrame(Overlapping_ObsID_HL)
+    Data["Close_ObsIDs_Bool"]=Overlapping_ObsID_Bool_L
+    Data["Close_ObsIDs"]=Overlapping_ObsID_HL
+    return Data
+def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
+    #pass
+    #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
+    ObsID_A=Data['OBSID']
+    ObsID_L=list(ObsID_A)
+    Source_RA_A=Data['RA']
+    Source_RA_L=list(Source_RA_A)
+    Source_Dec_A=Data['DEC']
+    Source_Dec_L=list(Source_Dec_A)
+    #Close_ObsIDs_Bool
+    Close_ObsIDs_Bool_A=Data['Close_ObsIDs_Bool']
+    Close_ObsIDs_Bool_L=list(Close_ObsIDs_Bool_A)
+    #Close_ObsIDs
+    Close_ObsIDs_A=Data['Close_ObsIDs']
+    Close_ObsIDs_HL=list(Close_ObsIDs_A)
+    #Aimpoint_Coords=data['OBSID',"RA_Aimpoint","DEC_Aimpoint"]
+    Duplicate_Source_HL=[]
+    Duplicate_Source_Bool_L=[]
+    for i in range(0,len(ObsID_L)):
+        #j=i+1
+        Overlapping_ObsID_Bool=False
+        ObsID=ObsID_L[i]
+        RA_Aimpoint=RA_Aimpoint_L[i]
+        DEC_Aimpoint=DEC_Aimpoint_L[i]
+        Overlapping_ObsID_L=[]
+        #for j in range(i+1,len(ObsID_L)):
+        for j in range(0,len(ObsID_L)):
+            ObsID_Test=ObsID_L[j]
+            if(ObsID_Test==ObsID):
+                continue
+            RA_Aimpoint_Test=RA_Aimpoint_L[j]
+            DEC_Aimpoint_Test=DEC_Aimpoint_L[j]
+            Aimpoint_Diff_RA=RA_Aimpoint-RA_Aimpoint_Test
+            Aimpoint_Diff_DEC=DEC_Aimpoint-DEC_Aimpoint_Test
+            Dist=np.sqrt((Aimpoint_Diff_RA**2.0)+(Aimpoint_Diff_DEC**2.0))
+            if(Dist<Dist_Threshold):
+                Overlapping_ObsID_Bool=True
+                #print ObsID_Test
+                Overlapping_ObsID_L.append(ObsID_Test)
+        Overlapping_ObsID_Bool_L.append(Overlapping_ObsID_Bool)
+        Overlapping_ObsID_L=list(set(Overlapping_ObsID_L))
+        Overlapping_ObsID_L_Str=str(Overlapping_ObsID_L)
+        Overlapping_ObsID_L_Str=Overlapping_ObsID_L_Str.replace(",",";")
+        Overlapping_ObsID_HL.append(Overlapping_ObsID_L_Str)
+    #Overlapping_ObsID_DF=pd.DataFrame(Overlapping_ObsID_HL)
+    Data["Close_ObsIDs_Bool"]=Overlapping_ObsID_Bool_L
+    Data["Close_ObsIDs"]=Overlapping_ObsID_HL
+    return Data
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
@@ -399,6 +489,7 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data['NET_COUNTS[1-2.1]']=data['RAW_COUNTS[1-2.1]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[1-2.1]'])
     data['NET_COUNTS[2.1-7.5]']=data['RAW_COUNTS[2.1-7.5]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[2.1-7.5]'])
     ObsID_A=data['OBSID']
+    ##'''
     Exposure_Time_A=ObsID_A.apply(Exposure_Time_Calc) #This works but takes to long as it unnecessarily repeats getting the exposure time for every object rather than every ObsID
     #print "Exposure_Time_A:\n", Exposure_Time_A
     data['Exposure_Time']=Exposure_Time_A
@@ -447,11 +538,13 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #Outside_D25_Bool_Calc(ObsID,Source_Num)
     data["Outside_D25_Bool"]=np.vectorize(Outside_D25_Bool_Calc)(ObsID_A,Src_A)
     #Distance_Galatic_Center_to_Aimpoint_Calc(ObsID)
+    ##'''
     #Aimpoint_Coords_Calc(ObsID)
-    Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
+    Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID_A)
     data["RA_Aimpoint"]=Aimpoint_Coords[0]
     data["DEC_Aimpoint"]=Aimpoint_Coords[1]
     data["Distance_GC_to_Aimpoint"]=np.vectorize(Distance_Galatic_Center_to_Aimpoint_Calc)(ObsID_A)
+    data=Overlapping_ObsID_Calc(data)
     #with pd.option_context('display.max_rows', None):  # more options can be specified also
         #print "data:\n", data
     print "data:\n", data
@@ -574,6 +667,9 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
         #new_dataframe = a_dataframe[a_dataframe.B <= 3]
         data=data[data.Outside_D25_Bool]
         data=data.reset_index(drop=True)
+    #Close_ObsIDs_Bool
+    data=data[data.Close_ObsIDs_Bool==False]
+    data=data.reset_index(drop=True)
     print "data.columns:\n", data.columns
     #print "data:\n", data
     with pd.option_context('display.max_columns', None):  # more options can be specified also
@@ -657,9 +753,14 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
         plt.savefig("Source_Flux_Vs_Limiting_Flux_Histogram."+Output_File_Ext)
     plt.clf()
     #For Log(N)-Log(S)
+    Limiting_Flux_Range=(7E-17,2.5E-15)
     #LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
-    LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    ##LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(0,2.5E-15))
+    ##LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=(7E-17,2.5E-15))
+    LogN_LogS_Hist_A=plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=-1,histtype='step',range=Limiting_Flux_Range)
     #print "LogN_LogS_Hist_A:\n", LogN_LogS_Hist
+    #LogN_LogS_Hist_Unsummed_A=plt.hist(Limiting_Flux_A,bins=100,log=True,histtype='step',range=(0,2.5E-15))
+    LogN_LogS_Hist_Unsummed_A=plt.hist(Limiting_Flux_A,bins=100,log=True,histtype='step',range=Limiting_Flux_Range)
     plt.clf()
     LogN_LogS_Hist=LogN_LogS_Hist_A[0]
     print "LogN_LogS_Hist:\n", LogN_LogS_Hist
@@ -678,20 +779,32 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
     Limiting_Flux_Area_A_Summed=np.cumsum(Limiting_Flux_Area_A[::-1])[::-1]
     print "Limiting_Flux_Area_A_Summed:\n", Limiting_Flux_Area_A_Summed
     LogN_LogS_Source_Density_Hist_A=LogN_LogS_Hist/Limiting_Flux_Area_A_Summed
+    LogN_LogS_Unsummed_Hist=LogN_LogS_Hist_Unsummed_A[0]
+    LogN_LogS_Unsummed_Hist_Error_A=np.sqrt(LogN_LogS_Unsummed_Hist)
+    #LogN_LogS_Sum=0
+    LogN_LogS_Error_Sum=0.0
+    LogN_LogS_Error_Sum_L=[]
+    for LogN_LogS_Error in reversed(LogN_LogS_Unsummed_Hist_Error_A):
+        LogN_LogS_Error_Sum=np.sqrt((LogN_LogS_Error_Sum**2.0)+(LogN_LogS_Error**2.0))
+        LogN_LogS_Error_Sum_L.append(LogN_LogS_Error_Sum)
+    LogN_LogS_Error_Sum_L=LogN_LogS_Error_Sum_L[::-1]
+    #LogN_LogS_Source_Density_Error_A=np.sqrt(LogN_LogS_Hist)/Limiting_Flux_Area_A_Summed #Note: I'm not sure this is valid for errors since the array is summed
+    LogN_LogS_Source_Density_Error_A=LogN_LogS_Error_Sum_L/Limiting_Flux_Area_A_Summed #Note: I'm not sure this is valid for errors since the array is summed
     print "LogN_LogS_Source_Density_Hist_A:\n", LogN_LogS_Source_Density_Hist_A
     LogN_LogS_Bins_A=np.array(LogN_LogS_Bins)
     LogN_LogS_Bins_Left_Edges_A=LogN_LogS_Bins_A[:-1]
     #plt.bar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A)
     ##plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data")
-    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data")
-    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hist/5.0,label="Test")
+    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data",marker=".")
+    plt.errorbar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,yerr=LogN_LogS_Source_Density_Error_A,linestyle="")
+    ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hist/5.0,label="Test",marker=".")
     LogN_LogS_Soft_A=Background_Source_Calc(LogN_LogS_Bins_Left_Edges_A,Hardness_Str="S")
     #plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
-    ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
+    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
     LogN_LogS_Hard_A=Background_Source_Calc(LogN_LogS_Bins_Left_Edges_A,Hardness_Str="H")
     print "LogN_LogS_Hard_A:\n", LogN_LogS_Hard_A
-    ##plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
-    ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
+    #plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
+    plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hard_A,label="Hard_Giacconi",linestyle="--")
     """
     Limiting_Flux_Paper_Soft_A=np.linspace(2.0E-16,3.0E-13,num=100)
     LogN_LogS_Soft_A=Background_Source_Calc(Limiting_Flux_Paper_Soft_A,Hardness_Str="S")
@@ -703,7 +816,7 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
     plt.plot(Limiting_Flux_Paper_Hard_A,LogN_LogS_Hard_A)
     """
     #plt.hist(Limiting_Flux_A,bins=100,log=True,cumulative=False,histtype='step',range=(0,2.5E-15))
-    ##plt.ylim(0.0,2000)
+    plt.ylim(0.0,2000)
     plt.xlim(0,2.5E-15)
     plt.xlabel("Limiting Flux (erg/cm**2/s absorbed flux)")
     plt.ylabel("N(>S)")
@@ -742,7 +855,7 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Offaxis_Angle_Annulus_Area_Calc(12095,1)
 #print Observed_Offaxis_Angle_Annulus_Area_Calc(12095,5)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-##Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
