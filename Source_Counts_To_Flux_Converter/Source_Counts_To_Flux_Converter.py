@@ -9,6 +9,7 @@ from astroquery.ned import Ned
 import astropy.units as u
 import sys
 from astropy.io import ascii
+import re
 def Evt2_File_Query(ObsID):
     query_path='/Volumes/xray/simon/all_chandra_observations/'+str(ObsID)+'/primary/*evt2*'
     evtfpath_L=glob.glob(query_path)
@@ -437,6 +438,8 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
     #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
     ObsID_A=Data['OBSID']
     ObsID_L=list(ObsID_A)
+    Source_Num_A=Data['SOURCE']
+    Source_Num_L=list(Source_Num_A)
     Source_RA_A=Data['RA']
     Source_RA_L=list(Source_RA_A)
     Source_Dec_A=Data['DEC']
@@ -451,26 +454,46 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
     Duplicate_Source_HL=[]
     Duplicate_Source_Bool_L=[]
     for i in range(0,len(ObsID_L)):
-        #j=i+1
-        Overlapping_ObsID_Bool=False
+        Duplicate_Source_L=[]
+        Close_ObsIDs_Bool=Close_ObsIDs_Bool_L[i]
+        if(Close_ObsIDs_Bool==False):
+            Duplicate_Source_Bool=False
+            Duplicate_Source_L=[]
+            Duplicate_Source_Bool_L.append(Duplicate_Source_Bool)
+            Duplicate_Source_HL.append(Duplicate_Source_L)
+            continue
         ObsID=ObsID_L[i]
-        RA_Aimpoint=RA_Aimpoint_L[i]
-        DEC_Aimpoint=DEC_Aimpoint_L[i]
-        Overlapping_ObsID_L=[]
-        #for j in range(i+1,len(ObsID_L)):
-        for j in range(0,len(ObsID_L)):
-            ObsID_Test=ObsID_L[j]
+        Source_Num=Source_Num_L[i]
+        Source_RA=Source_RA_L[i]
+        Source_Dec=Source_Dec_L[i]
+        #=re.split("[(),]",Cur_Raytrace_Reg)
+        Close_ObsIDs_L_Str=Close_ObsIDs_HL[i]
+        Close_ObsIDs_L=re.split("[[];]",Cur_Raytrace_Reg) #Note: I am not sure if this is the correct regex
+        #df.loc[df['column_name'].isin(some_values)]
+        Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
+        ObsID_A_Test=Data_Test['OBSID']
+        ObsID_L_Test=list(ObsID_A_Test)
+        Source_Num_A_Test=Data_Test['SOURCE']
+        Source_Num_L_Test=list(Source_Num_A_Test)
+        Source_RA_A_Test=Data_Test['RA']
+        Source_RA_L_Test=list(Source_RA_A_Test)
+        Source_Dec_A_Test=Data['DEC']
+        Source_Dec_L_Test=list(Source_Dec_A_Test)
+        for j in range(0,len(ObsID_L_Test)):
+            ObsID_Test=ObsID_L_Test[j]
             if(ObsID_Test==ObsID):
                 continue
-            RA_Aimpoint_Test=RA_Aimpoint_L[j]
-            DEC_Aimpoint_Test=DEC_Aimpoint_L[j]
-            Aimpoint_Diff_RA=RA_Aimpoint-RA_Aimpoint_Test
-            Aimpoint_Diff_DEC=DEC_Aimpoint-DEC_Aimpoint_Test
-            Dist=np.sqrt((Aimpoint_Diff_RA**2.0)+(Aimpoint_Diff_DEC**2.0))
+            Source_Num_Test=Source_Num_L_Test[j]
+            Source_RA_Test=Source_RA_L_Test[j]
+            Source_Dec_Test=Source_Dec_L_Test[j]
+            Source_RA_Diff=Source_RA-Source_RA_Test
+            Source_Dec_Diff=Source_Dec-Source_Dec_Test
+            Dist=np.sqrt((Source_RA_Diff**2.0)+(Source_Dec_Diff**2.0))
             if(Dist<Dist_Threshold):
-                Overlapping_ObsID_Bool=True
+                Duplicate_Source_Bool=True
                 #print ObsID_Test
-                Overlapping_ObsID_L.append(ObsID_Test)
+                Duplicate_Source=[ObsID_Test,Source_Num_Test]
+                Duplicate_Source_L.append(Duplicate_Source)
         Overlapping_ObsID_Bool_L.append(Overlapping_ObsID_Bool)
         Overlapping_ObsID_L=list(set(Overlapping_ObsID_L))
         Overlapping_ObsID_L_Str=str(Overlapping_ObsID_L)
