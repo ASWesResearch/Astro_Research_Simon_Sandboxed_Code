@@ -433,7 +433,7 @@ def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
     Data["Close_ObsIDs_Bool"]=Overlapping_ObsID_Bool_L
     Data["Close_ObsIDs"]=Overlapping_ObsID_HL
     return Data
-def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
+def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to be determed. Temperary value used.
     #pass
     #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
     ObsID_A=Data['OBSID']
@@ -454,10 +454,11 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
     Duplicate_Source_HL=[]
     Duplicate_Source_Bool_L=[]
     for i in range(0,len(ObsID_L)):
+        Duplicate_Source_Bool=False
         Duplicate_Source_L=[]
         Close_ObsIDs_Bool=Close_ObsIDs_Bool_L[i]
         if(Close_ObsIDs_Bool==False):
-            Duplicate_Source_Bool=False
+            #Duplicate_Source_Bool=False
             Duplicate_Source_L=[]
             Duplicate_Source_Bool_L.append(Duplicate_Source_Bool)
             Duplicate_Source_HL.append(Duplicate_Source_L)
@@ -468,7 +469,14 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
         Source_Dec=Source_Dec_L[i]
         #=re.split("[(),]",Cur_Raytrace_Reg)
         Close_ObsIDs_L_Str=Close_ObsIDs_HL[i]
-        Close_ObsIDs_L=re.split("[[];]",Cur_Raytrace_Reg) #Note: I am not sure if this is the correct regex
+        Close_ObsIDs_L_Strings=re.split("[\[\];]",Close_ObsIDs_L_Str) #Note: I am not sure if this is the correct regex
+        print "Close_ObsIDs_L_Strings: ", Close_ObsIDs_L_Strings
+        Close_ObsIDs_L=[]
+        for ObsID_Str in Close_ObsIDs_L_Strings:
+            if(ObsID_Str==""):
+                continue
+            ObsID_Int=int(ObsID_Str)
+            Close_ObsIDs_L.append(ObsID_Int)
         #df.loc[df['column_name'].isin(some_values)]
         Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
         ObsID_A_Test=Data_Test['OBSID']
@@ -494,14 +502,16 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=2.0):
                 #print ObsID_Test
                 Duplicate_Source=[ObsID_Test,Source_Num_Test]
                 Duplicate_Source_L.append(Duplicate_Source)
-        Overlapping_ObsID_Bool_L.append(Overlapping_ObsID_Bool)
-        Overlapping_ObsID_L=list(set(Overlapping_ObsID_L))
-        Overlapping_ObsID_L_Str=str(Overlapping_ObsID_L)
-        Overlapping_ObsID_L_Str=Overlapping_ObsID_L_Str.replace(",",";")
-        Overlapping_ObsID_HL.append(Overlapping_ObsID_L_Str)
+        Duplicate_Source_Bool_L.append(Duplicate_Source_Bool)
+        Duplicate_Source_HL.append(Duplicate_Source_L)
+        #Overlapping_ObsID_Bool_L.append(Overlapping_ObsID_Bool)
+        #Overlapping_ObsID_L=list(set(Overlapping_ObsID_L))
+        #Overlapping_ObsID_L_Str=str(Overlapping_ObsID_L)
+        #Overlapping_ObsID_L_Str=Overlapping_ObsID_L_Str.replace(",",";")
+        #Overlapping_ObsID_HL.append(Overlapping_ObsID_L_Str)
     #Overlapping_ObsID_DF=pd.DataFrame(Overlapping_ObsID_HL)
-    Data["Close_ObsIDs_Bool"]=Overlapping_ObsID_Bool_L
-    Data["Close_ObsIDs"]=Overlapping_ObsID_HL
+    Data["Duplicate_Source_Bool"]=Duplicate_Source_Bool_L
+    Data["Duplicate_Sources"]=Duplicate_Source_HL
     return Data
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
@@ -568,6 +578,7 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data["DEC_Aimpoint"]=Aimpoint_Coords[1]
     data["Distance_GC_to_Aimpoint"]=np.vectorize(Distance_Galatic_Center_to_Aimpoint_Calc)(ObsID_A)
     data=Overlapping_ObsID_Calc(data)
+    data=Duplicate_Source_Calc(data)
     #with pd.option_context('display.max_rows', None):  # more options can be specified also
         #print "data:\n", data
     print "data:\n", data
@@ -877,11 +888,11 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Offaxis_Angle_Annulus_Area_Calc(12095,5)
 #print Offaxis_Angle_Annulus_Area_Calc(12095,1)
 #print Observed_Offaxis_Angle_Annulus_Area_Calc(12095,5)
-#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
+Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
-Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+##Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
