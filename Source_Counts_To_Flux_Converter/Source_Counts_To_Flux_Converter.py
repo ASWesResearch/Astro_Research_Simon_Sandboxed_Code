@@ -10,6 +10,7 @@ import astropy.units as u
 import sys
 from astropy.io import ascii
 import re
+import pyregion
 def Evt2_File_Query(ObsID):
     query_path='/Volumes/xray/simon/all_chandra_observations/'+str(ObsID)+'/primary/*evt2*'
     evtfpath_L=glob.glob(query_path)
@@ -513,6 +514,125 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to
     Data["Duplicate_Source_Bool"]=Duplicate_Source_Bool_L
     Data["Duplicate_Sources"]=Duplicate_Source_HL
     return Data
+def CCD_Region_Query(ObsID):
+    #Region_File_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/"+str(Gname)+"/Area_Lists/"+str(ObsID)+"/*"+str(ObsID)+"*_CCD_Regions_simple_region_modifed_Code.txt"
+    Region_File_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/*/Area_Lists/"+str(ObsID)+"/*"+str(ObsID)+"*_CCD_Regions_simple_region_modifed_Code.txt"
+    Region_File_Path_L=glob.glob(Region_File_Query_Path)
+    if(len(Region_File_Path_L)!=1):
+        #print str(ObsID)+" has "+str(len(evtfpath_L)-1)+"Additional Evt2 Files ! ! !"
+        print str(ObsID)+" has "+str(len(Region_File_Path_L))+" Simple Region Files ! ! !"
+        return "Error"
+    Region_File_Path=Region_File_Path_L[0]
+    return Region_File_Path
+def Annulus_Shape_String_Generator(X,Y,Annulus_Number,W):
+    Inner_Radius=W*Annulus_Number
+    Outer_Radius=W*(Annulus_Number+1)
+    #shape1 ='annulus(' + str(X_Phys) +','+ str(Y_Phys)+','+ str(cur_inner_r)+','+ str(cur_r)+')' #shape1:-str, shape1, The shape string of the current area annulus.
+    Annulus_Shape='annulus(' + str(X) +','+ str(Y)+','+ str(Inner_Radius)+','+ str(Outer_Radius)+')'
+    return Annulus_Shape
+def Region_Coords_Converter(ObsID,Points_L,To_RA_Dec_Bool=False): #Note: This currently converts from SKY coordinates to RA and Dec but I think it might have to go in reverse to be used with the CXCRegion pakage.
+    evtfpath=Evt2_File_Query(ObsID)
+    Point_Converted_L=[]
+    for Point in Points_L:
+        X=Points_L[0]
+        Y=Points_L[1]
+        if(To_RA_Dec_Bool):
+            dmcoords(infile=str(evtfpath),x=str(X), y=str(Y), option='sky', verbose=0, celfmt='deg') # Runs the dmcoords CIAO tool, which converts coordinates like CHIP_ID to SKY, the tool is now being used to convert the physical coordinates in pixels to RA and Dec in decimal degrees.
+            RA=dmcoords.ra
+            Dec=dmcoords.dec
+            Point_Converted=[RA,Dec]
+        else:
+            RA=X
+            Dec=Y
+            dmcoords(infile=str(evtfpath),ra=str(RA), dec=str(Dec), option='cel', verbose=0, celfmt='deg') # Runs the dmcoords CIAO tool, which converts coordinates like CHIP_ID to SKY, the tool is now being used to convert the RA and Dec in decimal degrees to SKY coodinates in pixels.
+            X_Phys=dmcoords.x #X_Phys:-float, X_Physical, The sky plane X pixel coordinate in units of pixels
+            Y_Phys=dmcoords.y #Y_Phys:-float, Y_Physical, The sky plane Y pixel coordinate in units of pixels
+            Point_Converted=[X_Phys,Y_Phys]
+        Point_Converted_L.append(Point_Converted)
+    return Point_Converted_L
+def Region_Lengths_Converter(Lengths_L):
+    #2.03252032520325 the converstion factor is 2.03252032520325pix/arcsec or 0.4920+-0.0001 arcsec/pix
+    Lengths_A=np.array(Lengths_L)
+    Lengths_Coverted_A=0.4920*Lengths_A
+    Lengths_Coverted_L=list(Lengths_Coverted_A)
+    return Lengths_Coverted_L
+def Region_Parse(Region_Str,Num_Points=1,Fpath_Bool=False):
+    #Reg_Data=pyregion.open(fpath) #Reg_Data:-pyregion.ShapeList, Region_Data, The Region Data that is obtainted when the pyregion module converts the Simple Region File for it's use
+    if(Fpath_Bool):
+        fpath=Region_Str
+        Reg_Data=pyregion.open(fpath)
+    else:
+        Reg_Data=pyregion.parse(Region_Str)
+    Shape_List=[] #Shape_List:-List, Shape_List, The list of all Cur_Shape strings for an observation
+    Shape_Data_L=[] #Shape_Data_L:-List, Shape_Data_List, The list of all data needed to create a simple CCD region for every CCD polygon, represented as a high list where each high element is a list containing the data for a perticular CCD polygon, ie. This list is in the form [[[Midpoint_X_1,Midpoint_Y_1],D_1,Angle_1],[[Midpoint_X_2,Midpoint_Y_2],D_2,Angle_2],...[[Midpoint_X_n,Midpoint_Y_n],D_1,Angle_n]], where 1,2..n are differnt CCD polygons
+    for Cur_Reg_Data in Reg_Data: # Selects the current CCD shape polygon
+        Point_L=[] #Point_L, Point_list, The list of points that make up the current polygon
+        Dimensions_L=[]
+        Format=Cur_Reg_Data.coord_format #Format:-str, Format, The current coordinate format that the Cur_Reg_Data is in, This code will always use "physical" coordinates
+        #print type(Format)
+        Coords_L=Cur_Reg_Data.coord_list #Coords_L:-List, Coordinates_List, This is the list of coordinates that makes up the points that make the the current polygon in the form [X1,Y1,X2,Y2...,Xn,Yn] for finte n
+        #print type(Coords_L)
+        Shape=Cur_Reg_Data.name #Shape:-str, Shape, The string name of the current type of shape, all CCD Region Files will consist of only polygon shapes
+        #print type(Shape)
+        #print "Format ", Format
+        #print "Shape ", Shape
+        #print "Coords_L ", Coords_L
+        #for i in range(0,len(Coords_L)-1,2): # Selects each x value in the Coords_L, ie for the list [X1,Y1,X2,Y2...,Xn,Yn], it only selects X1,X2...Xn for finte n
+        for i in range(0,(Num_Points*2)-1,2): # Selects each x value in the Coords_L, ie for the list [X1,Y1,X2,Y2...,Xn,Yn], it only selects X1,X2...Xn for finte n
+            Cur_Point=[] #Cur_Point:-List, Current_Point, The current point in the Coords_L, Points are in the form [X,Y] for example [X1,Y1]
+            #print i
+            Cur_Point.append(Coords_L[i]) # Adds the current X to the Current Point
+            Cur_Point.append(Coords_L[i+1]) # Adds the current Y to the Current Point after the X
+            Point_L.append(Cur_Point) # Appends the current point to the Point_List
+        for i in range(Num_Points*2,len(Coords_L)):
+            Cur_Dimension=Coords_L[i]
+            Dimensions_L.append(Cur_Dimension)
+        #print "Point_L ", Point_L
+        Cur_Shape_Data=[Shape,Point_L,Dimensions_L]
+        Shape_Data_L.append(Cur_Shape_Data)
+    return Shape_Data_L
+def Region_Union(Region_L):
+    if(len(Region_L)==0):
+        return
+    if(len(Region_L)==1):
+        return Region_L[0]
+    Unioned_Region=Region_L[0]
+    for i in range(1,len(Region_L)):
+        Region=Region_L[i]
+        Unioned_Region=Unioned_Region+Region
+    return Unioned_Region
+def Region_Intersection(Region_L):
+    if(len(Region_L)==0):
+        return
+    if(len(Region_L)==1):
+        return Region_L[0]
+    Intersected_Region=Region_L[0]
+    for i in range(1,len(Region_L)):
+        Region=Region_L[i]
+        Intersected_Region=Intersected_Region*Region
+    return Intersected_Region
+def Limiting_Flux_Annulus_Intersection(ObsID,X_Aimpoint,Y_Aimpoint,Annulus_Number):
+    #pass
+    CCD_Region_Fpath=CCD_Region_Query(ObsID)
+    Annulus_Shape_Str=Annulus_Shape_String_Generator(X_Aimpoint,Y_Aimpoint,Annulus_Number,W=(1.0/60.0))
+    Annulus_Shape_Data=Region_Parse(Annulus_Shape_Str)[0]
+    print "Annulus_Shape_Data: ", Annulus_Shape_Data
+    Annulus_Shape_Point_L=Annulus_Shape_Data[1]
+    print "Annulus_Shape_Point_L: ", Annulus_Shape_Point_L
+    Annulus_Shape_Radii_L=Annulus_Shape_Data[2]
+    print "Annulus_Shape_Radii_L: ", Annulus_Shape_Radii_L
+    Annulus_Shape_Point_L_Converted=Region_Coords_Converter(ObsID,Annulus_Shape_Point_L)
+    Annulus_Shape_Radii_L_Converted=Region_Lengths_Converter(Annulus_Shape_Radii_L)
+    Annulus_Shape_Point_Converted=Annulus_Shape_Point_L_Converted[0]
+    X_Converted=Annulus_Shape_Point_Converted[0]
+    Y_Converted=Annulus_Shape_Point_Converted[1]
+    Inner_Radius_Converted=Annulus_Shape_Radii_L_Converted[0]
+    Outer_Radius_Converted=Annulus_Shape_Radii_L_Converted[1]
+    Annulus_Shape_Str_Converted='annulus(' + str(X_Converted) +','+ str(Y_Converted)+','+ str(Inner_Radius_Converted)+','+ str(Outer_Radius_Converted)+')'
+    Annulus_Region=CXCRegion(Annulus_Shape_Str_Converted) #Note: Annulus_Region should be converted to SKY coordinates
+    CCD_Region=CXCRegion(CCD_Region_Fpath)
+    Annulus_Intersection_Region=Region_Intersection([CCD_Region,Annulus_Region])
+    return Annulus_Intersection_Region
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
@@ -888,7 +1008,13 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Offaxis_Angle_Annulus_Area_Calc(12095,5)
 #print Offaxis_Angle_Annulus_Area_Calc(12095,1)
 #print Observed_Offaxis_Angle_Annulus_Area_Calc(12095,5)
-Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
+#print CCD_Region_Query("NGC_3631",3951)
+#print CCD_Region_Query("NGC_3631",3)
+#print CCD_Region_Query(3951)
+#print Region_Parse("circle(0,10,100)")
+#print Region_Parse("/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/NGC_3631/Area_Lists/3951/acisf03951_001N004_CCD_Regions_simple_region_modifed_Code.txt",Fpath_Bool=True)
+#Limiting_Flux_Annulus_Intersection(0,0,5,CCD_Region="")
+##Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
 #Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
