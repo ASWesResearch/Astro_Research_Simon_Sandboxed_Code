@@ -11,6 +11,8 @@ import sys
 from astropy.io import ascii
 import re
 import pyregion
+from ciao_contrib.runtool import *
+from region import *
 def Evt2_File_Query(ObsID):
     query_path='/Volumes/xray/simon/all_chandra_observations/'+str(ObsID)+'/primary/*evt2*'
     evtfpath_L=glob.glob(query_path)
@@ -434,6 +436,35 @@ def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
     Data["Close_ObsIDs_Bool"]=Overlapping_ObsID_Bool_L
     Data["Close_ObsIDs"]=Overlapping_ObsID_HL
     return Data
+def Close_Observations_Finder(Data,ObsID,Source_Num):
+    ObsID_A=Data['OBSID']
+    ObsID_L=list(ObsID_A)
+    Source_Num_A=Data['SOURCE']
+    Source_Num_L=list(Source_Num_A)
+    Close_ObsIDs_A=Data['Close_ObsIDs']
+    Close_ObsIDs_HL=list(Close_ObsIDs_A)
+    for i in range(0,len(ObsID_L)):
+        ObsID_Test=ObsID_L[i]
+        Source_Num_Test=Source_Num_L[i]
+        if((ObsID_Test==ObsID) and (Source_Num_Test==Source_Num)):
+            Match_Inx=i
+            break
+    Close_ObsIDs_L_Str=Close_ObsIDs_HL[i]
+    Close_ObsIDs_L_Strings=re.split("[\[\];]",Close_ObsIDs_L_Str) #Note: I am not sure if this is the correct regex
+    print "Close_ObsIDs_L_Strings: ", Close_ObsIDs_L_Strings
+    Close_ObsIDs_L_Strings.remove("")
+    Close_ObsIDs_L=[]
+    for ObsID_Str in Close_ObsIDs_L_Strings:
+        if(ObsID_Str==""):
+            continue
+        ObsID_Int=int(ObsID_Str)
+        Close_ObsIDs_L.append(ObsID_Int)
+    return Close_ObsIDs_L
+    #df.loc[df['column_name'].isin(some_values)]
+    """
+    Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
+    return Data_Test
+    """
 def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to be determed. Temperary value used.
     #pass
     #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
@@ -534,8 +565,9 @@ def Region_Coords_Converter(ObsID,Points_L,To_RA_Dec_Bool=False): #Note: This cu
     evtfpath=Evt2_File_Query(ObsID)
     Point_Converted_L=[]
     for Point in Points_L:
-        X=Points_L[0]
-        Y=Points_L[1]
+        #print "Point: ", Point
+        X=Point[0]
+        Y=Point[1]
         if(To_RA_Dec_Bool):
             dmcoords(infile=str(evtfpath),x=str(X), y=str(Y), option='sky', verbose=0, celfmt='deg') # Runs the dmcoords CIAO tool, which converts coordinates like CHIP_ID to SKY, the tool is now being used to convert the physical coordinates in pixels to RA and Dec in decimal degrees.
             RA=dmcoords.ra
@@ -550,10 +582,13 @@ def Region_Coords_Converter(ObsID,Points_L,To_RA_Dec_Bool=False): #Note: This cu
             Point_Converted=[X_Phys,Y_Phys]
         Point_Converted_L.append(Point_Converted)
     return Point_Converted_L
-def Region_Lengths_Converter(Lengths_L):
-    #2.03252032520325 the converstion factor is 2.03252032520325pix/arcsec or 0.4920+-0.0001 arcsec/pix
+def Region_Lengths_Converter(Lengths_L,To_RA_Dec_Bool=False):
+    #2.03252032520325 the converstion factor is 2.03252032520325pix/arcsec (7317.0731707317 pix/deg) or 0.4920+-0.0001 arcsec/pix
     Lengths_A=np.array(Lengths_L)
-    Lengths_Coverted_A=0.4920*Lengths_A
+    if(To_RA_Dec_Bool):
+        Lengths_Coverted_A=(0.4920*Lengths_A)/3600.0
+    else:
+        Lengths_Coverted_A=7317.0731707317*Lengths_A #7317.0731707317 pix/deg
     Lengths_Coverted_L=list(Lengths_Coverted_A)
     return Lengths_Coverted_L
 def Region_Parse(Region_Str,Num_Points=1,Fpath_Bool=False):
@@ -611,16 +646,18 @@ def Region_Intersection(Region_L):
         Region=Region_L[i]
         Intersected_Region=Intersected_Region*Region
     return Intersected_Region
-def Limiting_Flux_Annulus_Intersection(ObsID,X_Aimpoint,Y_Aimpoint,Annulus_Number):
+def Limiting_Flux_Annulus_Intersection(ObsID,Source_Num):
     #pass
     CCD_Region_Fpath=CCD_Region_Query(ObsID)
+    X_Aimpoint,Y_Aimpoint=Aimpoint_Coords_Calc(ObsID)
+    Annulus_Number=Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
     Annulus_Shape_Str=Annulus_Shape_String_Generator(X_Aimpoint,Y_Aimpoint,Annulus_Number,W=(1.0/60.0))
     Annulus_Shape_Data=Region_Parse(Annulus_Shape_Str)[0]
-    print "Annulus_Shape_Data: ", Annulus_Shape_Data
+    #print "Annulus_Shape_Data: ", Annulus_Shape_Data
     Annulus_Shape_Point_L=Annulus_Shape_Data[1]
-    print "Annulus_Shape_Point_L: ", Annulus_Shape_Point_L
+    #print "Annulus_Shape_Point_L: ", Annulus_Shape_Point_L
     Annulus_Shape_Radii_L=Annulus_Shape_Data[2]
-    print "Annulus_Shape_Radii_L: ", Annulus_Shape_Radii_L
+    #print "Annulus_Shape_Radii_L: ", Annulus_Shape_Radii_L
     Annulus_Shape_Point_L_Converted=Region_Coords_Converter(ObsID,Annulus_Shape_Point_L)
     Annulus_Shape_Radii_L_Converted=Region_Lengths_Converter(Annulus_Shape_Radii_L)
     Annulus_Shape_Point_Converted=Annulus_Shape_Point_L_Converted[0]
@@ -633,6 +670,112 @@ def Limiting_Flux_Annulus_Intersection(ObsID,X_Aimpoint,Y_Aimpoint,Annulus_Numbe
     CCD_Region=CXCRegion(CCD_Region_Fpath)
     Annulus_Intersection_Region=Region_Intersection([CCD_Region,Annulus_Region])
     return Annulus_Intersection_Region
+def Region_ObsID_Reference_Frame_Converter(ObsID,Region):  #Note: Still being worked on
+    #pass
+    Region_Str=''
+    print "Region: ", Region
+    Region_Shapes_L=Region.shapes
+    #for Reg in Region:
+    for Reg in Region_Shapes_L:
+        print "Reg: ", Reg
+        print "type(Reg):", type(Reg)
+        #Reg_Str=Reg.shapes
+        #print "Reg_Str: ", Reg_Str
+        Reg_Str=str(Reg)
+        print "Reg_Str: ", Reg_Str
+        """
+        if(Reg_Str=='annulus')
+            Reg_Parse_Data=Region_Parse(Reg_Str)[0]
+            print "Reg_Parse_Data: ", Reg_Parse_Data
+            Reg_Parse_Shape=Reg_Parse_Data[0]
+            print "Reg_Parse_Shape: ", Reg_Parse_Shape
+            Reg_Parse_Point_L=Reg_Parse_Data[1]
+            print "Reg_Parse_Point_L: ", Reg_Parse_Point_L
+            Reg_Parse_Length_L=Reg_Parse_Data[2]
+            print "Reg_Parse_Length_L: ", Reg_Parse_Length_L
+        """
+        X_L=Reg.xpoints
+        Y_L=Reg.ypoints
+        #print "Y_L: ", Y_L
+        Length_L=Reg.radii
+        Angles_L=Reg.angles
+        Logic_Operator=Reg.logic
+        print "Logic_Operator: ", Logic_Operator
+        print "type(Logic_Operator): ", type(Logic_Operator)
+        Logic_Operator_Str=str(Logic_Operator.str)
+        print "Logic_Operator_Str: ", Logic_Operator_Str
+        Point_L=[]
+        for i in range(0,len(X_L)):
+            Cur_Point=[X_L[i],Y_L[i]]
+            Point_L.append(Cur_Point)
+        Point_L_Converted=Region_Coords_Converter(ObsID,Point_L)
+        Length_L_Converted=Region_Lengths_Converter(Length_L)
+        Point_Converted=Point_L_Converted[0]
+        X_Converted=Point_Converted[0]
+        Y_Converted=Point_Converted[1]
+        #if(Reg=='annulus'):
+        if('annulus' in Reg_Str):
+            Inner_Radius_Converted=Length_L_Converted[0]
+            Outer_Radius_Converted=Length_L_Converted[1]
+            Str_Converted='annulus(' + str(X_Converted) +','+ str(Y_Converted)+','+ str(Inner_Radius_Converted)+','+ str(Outer_Radius_Converted)+')'
+        #if(('box' in Reg) or (Reg=='rotbox')):
+        if('box' in Reg_Str):
+            Width=Length_L_Converted[0]
+            Hight=Length_L_Converted[1]
+            Angle=Angles_L[0]
+            Str_Converted='annulus(' + str(X_Converted) +','+ str(Y_Converted)+','+ str(Width)+','+ str(Hight)+','+str(Angle)+')'
+        #Region_Str=Region_Str+Str_Converted+'\n' #Note: This is inccorect. The combined regions must be constructed with logic operators (as intersection ("*") or union ("+"))
+        #Region_Str=Region_Str Logic_Operator Str_Converted
+        Region_Str=Region_Str+Logic_Operator_Str+Str_Converted #Note: This is inccorect. The combined regions must be constructed with logic operators (as intersection ("*") or union ("+"))
+        print "Region_Str: ", Region_Str
+    print "Region_Str Final: ", Region_Str
+    Region_Converted=CXCRegion(Region_Str) #Note: Should use CXCRegion objects convenience functions instead
+    return Region_Converted
+def Unioned_Limiting_Flux_Area_Calc(Data,F_L_Bounds): #Note: Still being worked on
+    #pass
+    ObsID_A=Data['OBSID']
+    Src_A=Data['SOURCE']
+    Data["Annulus_Intersection_Regions"]=np.vectorize(Limiting_Flux_Annulus_Intersection)(ObsID_A,Src_A)
+    print 'Data["Annulus_Intersection_Regions"]: ', Data["Annulus_Intersection_Regions"]
+    ##Data_Slice=Limiting_Flux_Data_Slice_Calc(Data,F_L_Bounds)
+    Data_Slice=Data #Note: This is a test
+    Data_Slice=Data_Slice.drop_duplicates(subset=["OBSID","Offaxis_Angle_Annulus_Number"])
+    Data_Slice=Data_Slice[Data_Slice['Close_ObsIDs_Bool']]
+    Data_Slice=Data_Slice.reset_index(drop=True)
+    print "Data_Slice:\n", Data_Slice
+    ObsID_A_Slice=Data_Slice['OBSID']
+    ObsID_L_Slice=list(ObsID_A_Slice)
+    Src_A_Slice=Data_Slice['SOURCE']
+    Src_L_Slice=list(Src_A_Slice)
+    for i in range(0,len(ObsID_L_Slice)):
+        ObsID=ObsID_L_Slice[i]
+        Source_Num=Src_L_Slice[i]
+        if(ObsID not in list(Data_Slice['OBSID'])):
+            pass
+        Close_ObsIDs_L=Close_Observations_Finder(Data_Slice,ObsID,Source_Num)
+        print "Close_ObsIDs_L: ", Close_ObsIDs_L
+        #Example: Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
+        Data_Slice_Close=Data_Slice.loc[Data_Slice['OBSID'].isin(Close_ObsIDs_L)] #Note: There is a bug here
+        print "Data_Slice_Close:\n", Data_Slice_Close
+        ObsID_L_Slice_Close=list(Data_Slice_Close['OBSID'])
+        Data_Slice=Data_Slice.loc[~Data_Slice['OBSID'].isin(Close_ObsIDs_L)] #Note: This is to prevent the repeated calculation of the area of the same Overlapping ObsID Group
+        Annulus_Intersection_Regions_A=Data_Slice_Close["Annulus_Intersection_Regions"] #Note: All Annulus_Intersection_Regions must be put in the same ObsID reference frame
+        Annulus_Intersection_Regions_L=list(Annulus_Intersection_Regions_A)
+        Annulus_Intersection_Regions_Converted_L=[]
+        for j in range(0,len(ObsID_L_Slice_Close)):
+            ObsID_Test=ObsID_L_Slice_Close[j]
+            Annulus_Intersection_Region=Annulus_Intersection_Regions_L[j]
+            if(ObsID_Test==ObsID):
+                Annulus_Intersection_Regions_Converted_L.append(Annulus_Intersection_Region)
+                continue
+            #Annulus_Intersection_Region_Converted=Region_ObsID_Reference_Frame_Converter(ObsID_Test,Annulus_Intersection_Region)
+            Annulus_Intersection_Region_Converted=Region_ObsID_Reference_Frame_Converter(ObsID,Annulus_Intersection_Region)
+            Annulus_Intersection_Regions_Converted_L.append(Annulus_Intersection_Region_Converted)
+        print "Annulus_Intersection_Regions_Converted_L: ", Annulus_Intersection_Regions_Converted_L
+        Unioned_Region=Region_Union(Annulus_Intersection_Regions_Converted_L)
+        print "Unioned_Region: ",Unioned_Region
+        Unioned_Area=Unioned_Region.area()
+        return Unioned_Area
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
@@ -712,7 +855,15 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #print "data:\n", data.loc(data['Flux_Cut_Bool[.3-7.5]']==True)
     #print "data:\n", data.loc(True)
     #print data['Flux_Cut_Bool[.3-7.5]'].loc(True)
-
+def Data_Testing(Func,fpath,arg,Outside_D25_Bool=False):
+    data=pd.read_csv(fpath)
+    if(Outside_D25_Bool==True):
+        #data=data.drop(data[data.Outside_D25_Bool==False].index, inplace=True)
+        #new_dataframe = a_dataframe[a_dataframe.B <= 3]
+        data=data[data.Outside_D25_Bool]
+        data=data.reset_index(drop=True)
+    Output=Func(data,arg) #Note: This is a temperay fix for *args
+    return Output
 def Limiting_Flux_Model(F_L,m,F_L_E):
     #F_L_Corrected=m*np.log10(F_L)+np.log10(F_L_E)
     ##F_L_Corrected=m*F_L+F_L_E
@@ -1022,3 +1173,4 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
 ##Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+print Data_Testing(Unioned_Limiting_Flux_Area_Calc,'/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',[1.4E-16,1.7E-16])
