@@ -176,7 +176,7 @@ def Exposure_Time_Calc(ObsID):
     #print "type(Exposure_Time): ", type(Exposure_Time)
     #/Volumes/xray/simon/all_chandra_observations/12095/primary/
     return Exposure_Time
-def Source_Known_Flux_Finder(ObsID,Source_Num):
+def Source_Known_Flux_Finder(ObsID,Source_Num,Effective_Area_Correction_Bool=True):
     Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
     Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
     #print Hybrid_Sources_Data
@@ -195,7 +195,7 @@ def Source_Known_Flux_Finder(ObsID,Source_Num):
     #PIMMS_filepath=os.path.realpath('../PIMMS/'+PIMMSfname)
     PIMMS_filepath="/Volumes/xray/anthony/Research_Git/PIMMS/PIMMS_Data.csv"
     #print "PIMMS_filepath : ",PIMMS_filepath
-    PIMMS_A=pd.read_csv(PIMMS_filepath)
+    PIMMS_A=pd.read_csv(PIMMS_filepath) #BUG: Potential Major Bug Here! If Simon's soure counts are already effective area corrected. Then using the PIMMS data again must do the correction twice erroneously leading to the wrong result!
     #print PIMMS_A
     Cycle_A=PIMMS_A['Cycle']
     #print Cycle_A
@@ -208,11 +208,14 @@ def Source_Known_Flux_Finder(ObsID,Source_Num):
     Year_L=list(Year_A)
     #print Year_L
     #Obs_Year=2006 #This is a test value
-    for i in range(0,len(Year_L)):
-        #print i
-        if(Year_L[i]==Obs_Year):
-            Row_Inx=i
-            break
+    if(Effective_Area_Correction_Bool):
+        for i in range(0,len(Year_L)):
+            #print i
+            if(Year_L[i]==Obs_Year):
+                Row_Inx=i
+                break
+    if(Effective_Area_Correction_Bool==False):
+        Row_Inx=3
     #print Row_Inx
     #if((Chip_ID==3) or (Chip_ID==7)): #For Front illuminated?
     #Chip_ID=0 #This is a test value
@@ -631,9 +634,16 @@ def Region_Union(Region_L):
         return
     if(len(Region_L)==1):
         return Region_L[0]
+        #return CXCRegion(Region_L[0])
     Unioned_Region=Region_L[0]
+    #Unioned_Region=CXCRegion(Unioned_Region)
+    print "Initial Unioned_Region: ", Unioned_Region
+    print "type(Unioned_Region): ", type(Unioned_Region)
     for i in range(1,len(Region_L)):
         Region=Region_L[i]
+        #Region=CXCRegion(Region)
+        #print "Loop Region: ", Region
+        #print "type(Region): ", type(Region)
         Unioned_Region=Unioned_Region+Region
     return Unioned_Region
 def Region_Intersection(Region_L):
@@ -641,9 +651,13 @@ def Region_Intersection(Region_L):
         return
     if(len(Region_L)==1):
         return Region_L[0]
+        #return CXCRegion(Region_L[0])
     Intersected_Region=Region_L[0]
+    #print "str(Intersected_Region.shapes[0]): ", str(Intersected_Region.shapes)
+    #Intersected_Region=CXCRegion(str(Intersected_Region.shapes))
     for i in range(1,len(Region_L)):
         Region=Region_L[i]
+        #Region=CXCRegion(Region)
         Intersected_Region=Intersected_Region*Region
     return Intersected_Region
 def Limiting_Flux_Annulus_Intersection(ObsID,Source_Num):
@@ -675,14 +689,19 @@ def Region_ObsID_Reference_Frame_Converter(ObsID,Region):  #Note: Still being wo
     Region_Str=''
     print "Region: ", Region
     Region_Shapes_L=Region.shapes
+    #Reg_Combined=""
     #for Reg in Region:
-    for Reg in Region_Shapes_L:
+    #for Reg in Region_Shapes_L:
+    for i in range(0,len(Region_Shapes_L)):
+        Reg=Region_Shapes_L[i]
         print "Reg: ", Reg
         print "type(Reg):", type(Reg)
         #Reg_Str=Reg.shapes
         #print "Reg_Str: ", Reg_Str
         Reg_Str=str(Reg)
         print "Reg_Str: ", Reg_Str
+        if(i==0):
+            Reg_Combined=Region_Shapes_L[0]
         """
         if(Reg_Str=='annulus')
             Reg_Parse_Data=Region_Parse(Reg_Str)[0]
@@ -722,14 +741,24 @@ def Region_ObsID_Reference_Frame_Converter(ObsID,Region):  #Note: Still being wo
         if('box' in Reg_Str):
             Width=Length_L_Converted[0]
             Hight=Length_L_Converted[1]
-            Angle=Angles_L[0]
-            Str_Converted='annulus(' + str(X_Converted) +','+ str(Y_Converted)+','+ str(Width)+','+ str(Hight)+','+str(Angle)+')'
+            Angle=Angles_L[0] #Note: This might be incorrect. The two differnt observations can have two differnt roll angles and thus would require the angle to be converted. I have to make sure this is the case though.
+            Str_Converted='box(' + str(X_Converted) +','+ str(Y_Converted)+','+ str(Width)+','+ str(Hight)+','+str(Angle)+')'
         #Region_Str=Region_Str+Str_Converted+'\n' #Note: This is inccorect. The combined regions must be constructed with logic operators (as intersection ("*") or union ("+"))
         #Region_Str=Region_Str Logic_Operator Str_Converted
-        Region_Str=Region_Str+Logic_Operator_Str+Str_Converted #Note: This is inccorect. The combined regions must be constructed with logic operators (as intersection ("*") or union ("+"))
-        print "Region_Str: ", Region_Str
+        Region_Str=Region_Str+Logic_Operator_Str+Str_Converted #Note: This does not work. It might be better to convert into a region objects frist and then combine the regions objects rather than trying to convert the combined string region.
+        """
+        #print "Region_Str: ", Region_Str
+        print "Str_Converted:", Str_Converted
+        Cur_Region=CXCRegion(Str_Converted)
+        if(i!=0):
+            if(Logic_Operator_Str=="+"):
+                Reg_Combined=Reg_Combined+Cur_Region
+            if(Logic_Operator_Str=="*"):
+                Reg_Combined=Reg_Combined*Cur_Region
+        """
     print "Region_Str Final: ", Region_Str
     Region_Converted=CXCRegion(Region_Str) #Note: Should use CXCRegion objects convenience functions instead
+    #Region_Converted=Reg_Combined
     return Region_Converted
 def Unioned_Limiting_Flux_Area_Calc(Data,F_L_Bounds): #Note: Still being worked on
     #pass
@@ -793,7 +822,7 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data['Count_Rate[.3-7.5]']=data['NET_COUNTS[.3-7.5]']/data['Exposure_Time']
     Src_A=data['SOURCE']
     #df['new_column'] = np.vectorize(fx)(df['A'], df['B'])
-    data['Known_Flux[.3-7.5]']=np.vectorize(Source_Known_Flux_Finder)(ObsID_A,Src_A)
+    data['Known_Flux[.3-7.5]']=np.vectorize(Source_Known_Flux_Finder,excluded=['Effective_Area_Correction_Bool'])(ObsID_A,Src_A,Effective_Area_Correction_Bool=False) #Note: This is done because the counts from the counts_info.csv file are already effective area corrected. I am not sure if this is the correct method since this also effects the pile-up estimation. Therefore this is an improvement of the double effective area correction bug but not a full solution. The fluxes will still be incorrect!
     #print "data:\n", data
     """
     print "data Grouped:\n", data.groupby("OBSID").groups
@@ -988,6 +1017,8 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
         print "Flux_Cut_Fit: ", Flux_Cut_Fit
     Test_Bool=False
     Flux_A=data['Flux[.3-7.5]']
+    #Flux_A=Flux_A/10.0 #Note: This is a test. THIS CREATES INCORRECT DATA!!!! DO NOT USE FOR SCIENCE!!!!
+    #Flux_A=Flux_A/5.0 #Note: This is a test. THIS CREATES INCORRECT DATA!!!! DO NOT USE FOR SCIENCE!!!!
     Flux_Avg=Flux_A.mean()
     print "Flux_Avg: ", Flux_Avg
     Flux_L=list(Flux_A)
@@ -1101,7 +1132,7 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
     #plt.bar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A)
     ##plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data")
     plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,label="Data",marker=".")
-    plt.errorbar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,yerr=LogN_LogS_Source_Density_Error_A,linestyle="")
+    ##plt.errorbar(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Source_Density_Hist_A,yerr=LogN_LogS_Source_Density_Error_A,linestyle="") #Current Functioning Error bars
     ##plt.semilogx(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Hist/5.0,label="Test",marker=".")
     LogN_LogS_Soft_A=Background_Source_Calc(LogN_LogS_Bins_Left_Edges_A,Hardness_Str="S")
     #plt.plot(LogN_LogS_Bins_Left_Edges_A,LogN_LogS_Soft_A,label="Soft_Giacconi",linestyle="--")
@@ -1142,7 +1173,8 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #9552
 #print GC_Query(9552)
 #print D25_Query(12095)
-#Source_Known_Flux_Finder(12095,1)
+#print Source_Known_Flux_Finder(12095,1)
+#print Source_Known_Flux_Finder(12095,1,False)
 #print Limiting_Flux_Calc(12095,1)
 #print Limiting_Flux_Calc(12095,5)
 #print Limiting_Flux_Calc(2197,5)
@@ -1166,11 +1198,12 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Region_Parse("/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/NGC_3631/Area_Lists/3951/acisf03951_001N004_CCD_Regions_simple_region_modifed_Code.txt",Fpath_Bool=True)
 #Limiting_Flux_Annulus_Intersection(0,0,5,CCD_Region="")
 ##Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv",)
-#Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
+##Source_Counts_To_Flux_Converter("/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info.csv","/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv")
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv')
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
 #Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True,Output_File_Ext="png")
-##Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
+#Data_Analysis('/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/Old_Runs/Old_092720/counts_info_Flux_Calc.csv',Outside_D25_Bool=True)
 print Data_Testing(Unioned_Limiting_Flux_Area_Calc,'/Volumes/xray/anthony/Simon_Sandboxed_Code/Source_Counts_To_Flux_Converter/counts_info_testing_small_Flux_Calc.csv',[1.4E-16,1.7E-16])
