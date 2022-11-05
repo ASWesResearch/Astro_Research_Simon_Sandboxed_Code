@@ -15,9 +15,13 @@ import ciao_contrib.runtool as rt
 import numpy as np
 import glob
 import re
+import time
 from multiprocessing import Pool
 
 def Flux_Calc(obsid):
+    f = open("Srcflux_Times.txt", "a")
+    f.write("ObsID,Source_Num,Time\n")
+    Error_List=[]
     with rt.new_pfiles_environment(ardlib=True):
         with new_tmpdir() as tmpdir:
             obsid = str(obsid)
@@ -223,7 +227,18 @@ def Flux_Calc(obsid):
                 #Pos_Str=str(RA)+","+str(Dec)
                 print "Pos_Str: ", Pos_Str
                 #Ant: Note I need to fix the bands parameter. The string imput is incorrect and using the incorrect syntax ! ! !, Ant Note 2: This has now been corrected !
-                srcflux(infile=Infile_Str, pos=Pos_Str, outroot=Outroot_Str_Test, bands=Bands_Str, srcreg=Hybrid_Region_Str_Reduced, bkgreg=Hybrid_BG_Region, psfmethod="ideal", rmffile=Rmffile_Str, arffile=Arffile_Str, clobber="no", tmpdir=tmpdir, verbose=1)
+                tic = time.time()
+                try:
+                    srcflux(infile=Infile_Str, pos=Pos_Str, outroot=Outroot_Str_Test, bands=Bands_Str, srcreg=Hybrid_Region_Str_Reduced, bkgreg=Hybrid_BG_Region, psfmethod="ideal", rmffile=Rmffile_Str, arffile=Arffile_Str, clobber="no", tmpdir=tmpdir, verbose=1)
+                except:
+                    Error_List.append([obsid,i+1])
+                toc = time.time()
+                #print(f"Time for srcflux: {toc - tic:0.4f} seconds")
+                Time=toc - tic
+                print "Time for srcflux for ObsID "+str(obsid)+" Source " + str(i+1)+":", Time
+                f.write(str(obsid)+","+str(i+1)+","+str(Time)+"\n")
+    print "Error_List: ", Error_List
+
 
 
 ##if __name__ == '__main__':
@@ -237,18 +252,21 @@ def Driver(obsid_L):
             print "No traced sources in obsid " + str(obsid[i])
             print "specextract failed for obsid " + str(obsid[i])
     """
+    """
     for i in range(0,len(obsid_L)):
         Flux_Calc(obsid_L[i])
     """
+    #"""
     if __name__ == '__main__':
         P = Pool(16)
         P.map(Flux_Calc, obsid_L)
-    """
+    #"""
     #when_done("specextract") #Ant: Disabled to not accidently email Simon
 
 def Main():
-    Driver([10125])
+    #Driver([10125])
     #Driver([11775]) #NGC_1300 to test negitive declination
-    #Driver([6096, 1971, 1972, 768, 952, 11674, 13255, 13253, 13246, 12952, 12953, 13247, 12951, 2025, 9548, 2149, 2197, 9510, 6131, 5908, 803, 14342, 12995, 2064, 16024, 12992, 14332, 13202, 793, 2933, 11104, 379, 2056, 2055, 2922, 9506, 11344, 766, 4688, 6869, 6872, 3554, 2057, 2058, 8041, 9121, 9546, 7252, 7060, 9553, 5930, 5931, 5929, 2079, 5905, 9527, 4689, 3947, 1563, 9507, 4613, 794, 11775, 11271, 3951, 2062, 2027, 2060, 2061, 2070, 2032, 7154, 7153, 11779, 5932, 2976, 4613, 794, 1043, 4632, 4631, 4633, 4404, 2059, 12095, 2040, 2915, 4372, 2069, 11229, 7848, 15383, 10125, 2031, 10875, 12889, 12888, 321, 322, 9551, 9550, 3954, 2020, 2068, 4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
+    #Driver([2031])
+    Driver([6096, 1971, 1972, 768, 952, 11674, 13255, 13253, 13246, 12952, 12953, 13247, 12951, 2025, 9548, 2149, 2197, 9510, 6131, 5908, 803, 14342, 12995, 2064, 16024, 12992, 14332, 13202, 793, 2933, 11104, 379, 2056, 2055, 2922, 9506, 11344, 766, 4688, 6869, 6872, 3554, 2057, 2058, 8041, 9121, 9546, 7252, 7060, 9553, 5930, 5931, 5929, 2079, 5905, 9527, 4689, 3947, 1563, 9507, 4613, 794, 11775, 11271, 3951, 2062, 2027, 2060, 2061, 2070, 2032, 7154, 7153, 11779, 5932, 2976, 4613, 794, 1043, 4632, 4631, 4633, 4404, 2059, 12095, 2040, 2915, 4372, 2069, 11229, 7848, 15383, 10125, 2031, 10875, 12889, 12888, 321, 322, 9551, 9550, 3954, 2020, 2068, 4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
 
 Main()
