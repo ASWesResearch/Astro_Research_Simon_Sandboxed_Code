@@ -27,7 +27,7 @@ Root_Path="/opt/"
 Reg_Path="/Volumes/expansion/"
 #Outpath="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/"
 Outpath="/Volumes/expansion/"
-def spec(obsid, Clobber_Bool=False):
+def spec(obsid, Clobber_Bool="Off", Overlap_Only_Bool=True):
     Error_List=[]
     with rt.new_pfiles_environment(ardlib=True):
         with new_tmpdir() as tmpdir:
@@ -61,7 +61,8 @@ def spec(obsid, Clobber_Bool=False):
             obsid = str(obsid)
             #/Volumes/expansion/extracted_spectra/10125/
             if(Clobber_Bool==False):
-                Output_Path="/Volumes/expansion/extracted_spectra/"+str(obsid)+"/"
+                #Output_Path="/Volumes/expansion/extracted_spectra/"+str(obsid)+"/"
+                Output_Path="/Volumes/expansion/extracted_spectra_Test/"+str(obsid)+"/"
                 Output_Path_L=glob.glob(Output_Path)
                 if(len(Output_Path_L)>0):
                     print(str(obsid)+" already exists and Clobber is set to False!")
@@ -180,6 +181,17 @@ def spec(obsid, Clobber_Bool=False):
                 print("Hybrid_BG_Region_Inner_R_Str_Reduced: ", Hybrid_BG_Region_Inner_R_Str_Reduced)
                 Hybrid_BG_Region=Hybrid_BG_Region_Outer_R_Str_Reduced+Hybrid_BG_Region_Inner_R_Str_Reduced
                 print("Hybrid_BG_Region: ", Hybrid_BG_Region)
+                #/Volumes/expansion/Hybrid_Regions/10125/Individual_Source_Regions/Source_1_ObsID_10125_Nearest_Neighbor_Hybrid_Overlap_Corrected_Background.reg
+                Hybrid_Overlap_Corrected_BG_Filepath=Reg_Path+"Hybrid_Regions/"+str(obsid)+"/Individual_Source_Regions/Source_"+str(i+1)+"_ObsID_"+str(obsid)+"_Nearest_Neighbor_Hybrid_Overlap_Corrected_Background.reg"
+                Hybrid_Overlap_Corrected_BG_File=open(Hybrid_Overlap_Corrected_BG_Filepath)
+                Hybrid_Overlap_Corrected_BG_Str=Hybrid_Overlap_Corrected_BG_File.read()
+                Hybrid_Overlap_Corrected_BG_Str_L=Hybrid_Overlap_Corrected_BG_Str.split("\n")
+                print("Hybrid_Overlap_Corrected_BG_Str_L: ", Hybrid_Overlap_Corrected_BG_Str_L)
+                print("len(Hybrid_Overlap_Corrected_BG_Str_L): ", len(Hybrid_Overlap_Corrected_BG_Str_L))
+                if(len(Hybrid_Overlap_Corrected_BG_Str_L)>5):
+                    Overlap_Bool=True
+                else:
+                    Overlap_Bool=False
                 # print "specextract " + obsid + " " + str(i)
                 # print "Assigning new defaults to specextract for source number " + str(i) + "..."
                 # print "Assigning infile..."
@@ -242,6 +254,7 @@ def spec(obsid, Clobber_Bool=False):
                 #Ant Note: ah = rt.make_tool("asphist")
                 Infile_Str="/Volumes/expansion/ObsIDs/" + str(obsid) + "/new/" + str(name) + "[sky="+Hybrid_Region_Str_Reduced+"]"
                 Bkgfile_Str="/Volumes/expansion/ObsIDs/" + obsid + "/new/" + str(name) + "[sky="+Hybrid_BG_Region+"]"
+                Bkgfile_Str_Overlap="/Volumes/expansion/ObsIDs/" + obsid + "/new/" + str(name) + "[sky=region("+Hybrid_Overlap_Corrected_BG_Filepath+")]"
                 Outroot_Str=Outpath+"extracted_spectra/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
                 Outroot_Str_Test=Outpath+"extracted_spectra_Test/" + str(obsid) +"/"+ "extracted_spectra_" + str(obsid) + "_" + str(i+1)
                 """
@@ -263,12 +276,21 @@ def spec(obsid, Clobber_Bool=False):
                     read_data = f.read()
                     f.closed
                 """
+                print("Overlap_Bool: ", Overlap_Bool)
                 try:
                     #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
-                    if(Clobber_Bool):
-                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                    if(Clobber_Bool==True):
+                        ##specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        print("Clobber")
+                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                     else:
-                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                        if(Overlap_Only_Bool and Overlap_Bool):
+                            print("Overlap Detected!")
+                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        else:
+                            #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                            print("No Clobber")
+                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
                 except:
                     Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str_Test, tmpdir]
                     Error_List.append(Cur_Error_L)
@@ -350,8 +372,9 @@ def Main():
     #Parallelization
     #[4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552]
     #Driver([4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
+    Driver([969])
     #ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs(Remove_Unarchived=True)
-    ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs()
-    Driver(ObsID_L)
+    ##ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs()
+    ##Driver(ObsID_L)
 
 Main()
