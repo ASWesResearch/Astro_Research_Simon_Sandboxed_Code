@@ -61,8 +61,8 @@ def spec(obsid, Clobber_Bool="Off", Overlap_Only_Bool=True):
             obsid = str(obsid)
             #/Volumes/expansion/extracted_spectra/10125/
             if(Clobber_Bool==False):
-                #Output_Path="/Volumes/expansion/extracted_spectra/"+str(obsid)+"/"
-                Output_Path="/Volumes/expansion/extracted_spectra_Test/"+str(obsid)+"/"
+                Output_Path="/Volumes/expansion/extracted_spectra/"+str(obsid)+"/"
+                #Output_Path="/Volumes/expansion/extracted_spectra_Test/"+str(obsid)+"/"
                 Output_Path_L=glob.glob(Output_Path)
                 if(len(Output_Path_L)>0):
                     print(str(obsid)+" already exists and Clobber is set to False!")
@@ -282,17 +282,20 @@ def spec(obsid, Clobber_Bool="Off", Overlap_Only_Bool=True):
                     if(Clobber_Bool==True):
                         ##specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                         print("Clobber")
-                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                     else:
                         if(Overlap_Only_Bool and Overlap_Bool):
                             print("Overlap Detected!")
-                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                            #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                         else:
                             #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
                             print("No Clobber")
-                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                            #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
                 except:
-                    Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str_Test, tmpdir]
+                    Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str, tmpdir]
                     Error_List.append(Cur_Error_L)
 
     print("Error_List: ", Error_List)
@@ -372,9 +375,9 @@ def Main():
     #Parallelization
     #[4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552]
     #Driver([4742, 2039, 3150, 2030, 4743, 5197, 11784, 9552])
-    Driver([969])
+    #Driver([969])
     #ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs(Remove_Unarchived=True)
-    ##ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs()
-    ##Driver(ObsID_L)
+    ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs()
+    Driver(ObsID_L)
 
 Main()
