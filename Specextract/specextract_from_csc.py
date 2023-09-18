@@ -27,7 +27,7 @@ Root_Path="/opt/"
 Reg_Path="/Volumes/expansion/"
 #Outpath="/Volumes/xray/anthony/Simon_Sandboxed_Code/Specextract/"
 Outpath="/Volumes/expansion/"
-def spec(obsid, Clobber_Bool="Off", Overlap_Only_Bool=True):
+def spec(obsid, Clobber_Bool=False, Overlap_Only_Bool=False):
     Error_List=[]
     with rt.new_pfiles_environment(ardlib=True):
         with new_tmpdir() as tmpdir:
@@ -283,17 +283,19 @@ def spec(obsid, Clobber_Bool="Off", Overlap_Only_Bool=True):
                         ##specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                         print("Clobber")
                         #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
-                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        ##specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
+                        specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                     else:
                         if(Overlap_Only_Bool and Overlap_Bool):
-                            print("Overlap Detected!")
+                            ##print("Overlap Detected!")
                             #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                             specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="yes", tmpdir=tmpdir, verbose=1)
                         else:
                             #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
                             print("No Clobber")
                             #specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str_Test, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
-                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                            ##specextract(infile=Infile_Str, bkgfile=Bkgfile_Str, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
+                            specextract(infile=Infile_Str, bkgfile=Bkgfile_Str_Overlap, outroot=Outroot_Str, correctpsf="yes", weight="no", clobber="no", tmpdir=tmpdir, verbose=1)
                 except:
                     Cur_Error_L=[obsid, Infile_Str, Bkgfile_Str, Outroot_Str, tmpdir]
                     Error_List.append(Cur_Error_L)
