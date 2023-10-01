@@ -94,12 +94,7 @@ def Find_Source_Num_Str(Fpath):
     Src_Num_Str=Fname.split("_")[3]
     return Src_Num_Str
 
-def Merge_CSVs(ObsID):
-    Glob_Str="/opt/xray/anthony/expansion_backup/Source_Fluxes/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_*.csv"
-    #Glob_Str="/opt/xray/anthony/Simon_Sandboxed_Code/Flux_Calc/Source_Fluxes_Test/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_*.csv" #For Testing
-    ###
-    #DEFINE KEY LIST HERE Key_L
-    ###
+def Key_List_Generator():
     Bands_Str_Raw="0.3-1,1-2,2-8,0.3-8,1-2.1,2.1-7.5,0.3-7.5"
     Bands_Str_L=Bands_Str_Raw.split(",")
     print("Bands_Str_L: ", Bands_Str_L)
@@ -128,6 +123,15 @@ def Merge_CSVs(ObsID):
     print("Bands_Str_L_Reduced: ", Bands_Str_L_Reduced)
     #Key_L=["soft"]
     Key_L=Bands_Str_L_Reduced
+    return Key_L
+
+def Merge_CSVs(ObsID):
+    Glob_Str="/opt/xray/anthony/expansion_backup/Source_Fluxes/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_*.csv"
+    #Glob_Str="/opt/xray/anthony/Simon_Sandboxed_Code/Flux_Calc/Source_Fluxes_Test/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_*.csv" #For Testing
+    ###
+    #DEFINE KEY LIST HERE Key_L
+    ###
+    Key_L=Key_List_Generator()
     for Key in Key_L:
         #Glob_Str="/opt/xray/anthony/Simon_Sandboxed_Code/Flux_Calc/Source_Fluxes_Test/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_*"+Key+".csv" #For Testing
         #/opt/xray/anthony/expansion_backup/Source_Fluxes/
@@ -167,10 +171,57 @@ def Merge_CSVs(ObsID):
         #COUNT_RATE
         #print("Data['COUNT_RATE']: ", Data["COUNT_RATE"])
 
-def Flux_File_to_CSV_Big_Input_L(ObsID_L, Clobber_Bool=False):
+def Standard_Flux_File_Generator(ObsID):
+    Key_L=Key_List_Generator()
+    i=0
+    for Key in Key_L:
+        Glob_Str="/opt/xray/anthony/expansion_backup/Source_Fluxes/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_All_"+Key+".csv"
+        print("Glob_Str: ", Glob_Str)
+        Path_L=glob.glob(Glob_Str)
+        try:
+            if(len(Path_L)==0):
+                print("ObsID "+str(ObsID)+" is Missing File")
+                raise FileNotFoundException(ObsID)
+        except:
+            print("ObsID "+str(ObsID)+" is Missing File")
+            raise FileNotFoundException(ObsID)
+        Data=pd.read_csv(Path_L[0])
+        #print(Data.columns)
+        #print("Data\n:", Data)
+        """
+        Updating the header keys to match the given band key and then merging into one unified table
+        """
+        Header_L_Invariant=['Source_Num', 'ObsID', 'X', 'Y', 'RA', 'Dec', 'SHAPE', 'AREA', 'EXPOSURE', 'XPOS', 'YPOS','THETA', 'PHI', 'RAPOS', 'DECPOS', 'INSIDE_FOV', 'NEAR_CHIP_EDGE','CHIP_ID', 'CHIPX', 'CHIPY']
+        Header_L_Variant=['Source_Num', 'RMID', 'COMPONENT', 'COUNTS', 'ERR_COUNTS', 'EXPOSURE', 'COUNT_RATE','COUNT_RATE_ERR', 'BG_COUNTS', 'BG_ERR', 'BG_EXPOSURE','BG_RATE', 'BG_SUR_BRI', 'BG_SUR_BRI_ERR', 'NET_COUNTS', 'NET_ERR','NET_RATE', 'ERR_RATE', 'SUR_BRI', 'SUR_BRI_ERR', 'PSFFRAC', 'BG_PSFFRAC', 'NET_RATE_APER','NET_RATE_APER_LO', 'NET_RATE_APER_HI', 'SRC_SIGNIFICANCE', 'FLUX_APER','BG_FLUX_APER', 'SRC_PHOTFLUX', 'BG_PHOTFLUX', 'MEAN_SRC_EXP','MEAN_BG_EXP', 'NET_FLUX_APER', 'NET_FLUX_APER_LO', 'NET_FLUX_APER_HI','UPPER_LIMIT', 'NET_PHOTFLUX_APER', 'NET_PHOTFLUX_APER_LO','NET_PHOTFLUX_APER_HI', 'MFLUX_CNV', 'UMFLUX_CNV', 'NET_MFLUX_APER','NET_MFLUX_APER_LO', 'NET_MFLUX_APER_HI', 'NET_UMFLUX_APER','NET_UMFLUX_APER_LO', 'NET_UMFLUX_APER_HI', 'SRC_VAR_ODDS','SRC_VAR_PROB', 'SRC_VAR_INDEX']
+        #Header_L_Variant_Reduced=['Source_Num', 'COUNTS', 'ERR_COUNTS', 'COUNT_RATE','COUNT_RATE_ERR', 'BG_COUNTS', 'BG_ERR', 'BG_EXPOSURE','BG_RATE', 'NET_COUNTS', 'NET_ERR','NET_RATE', 'ERR_RATE']
+        Header_L_Variant_Reduced=['Source_Num', 'COUNTS', 'ERR_COUNTS', 'COUNT_RATE','COUNT_RATE_ERR', 'BG_COUNTS', 'BG_ERR', 'BG_EXPOSURE','BG_RATE', 'NET_COUNTS', 'NET_ERR','NET_RATE', 'ERR_RATE','NET_RATE_APER','NET_RATE_APER_LO','NET_RATE_APER_HI','NET_FLUX_APER','NET_FLUX_APER_LO','NET_FLUX_APER_HI','MFLUX_CNV', 'UMFLUX_CNV', 'NET_MFLUX_APER','NET_MFLUX_APER_LO', 'NET_MFLUX_APER_HI', 'NET_UMFLUX_APER','NET_UMFLUX_APER_LO', 'NET_UMFLUX_APER_HI']
+        if(i==0):
+            Merged_Data_Invariant=Data[Header_L_Invariant]
+            Data_Variant=Data[Header_L_Variant_Reduced]
+            #Data_Variant=Data[Header_L_Variant]
+            Data_Variant.columns=Data_Variant.columns.map(lambda x : x+"_"+Key if x !='Source_Num' else x)
+            Merged_Data=pd.merge(Merged_Data_Invariant, Data_Variant, on='Source_Num', how='outer', suffixes=(None,"_"+Key))
+        else:
+            Data_Variant=Data[Header_L_Variant_Reduced]
+            #Data_Variant=Data[Header_L_Variant]
+            Data_Variant.columns=Data_Variant.columns.map(lambda x : x+"_"+Key if x !='Source_Num' else x)
+            Merged_Data=pd.merge(Merged_Data, Data_Variant, on='Source_Num', how='outer', suffixes=(None,"_"+Key))
+        i=i+1
+    #print("Merged_Data_Invariant:\n", Merged_Data_Invariant)
+    #pd.set_option('display.max_columns', None)
+    #pd.set_option('display.max_rows', 3)
+    print("Merged_Data:\n", Merged_Data)
+    #Outpath="/opt/xray/anthony/expansion_backup/Source_Fluxes/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_All_Bands.csv"  #Real one
+    Outpath="/opt/xray/anthony/expansion_backup/Source_Fluxes_Test/"+str(ObsID)+"/Source_Flux_"+str(ObsID)+"_All_Bands.csv"  #For Testing
+    print("Outpath: ", Outpath)
+    Merged_Data_CSV=Merged_Data.to_csv(Outpath,index=False)
+    return Merged_Data
+
+def Flux_File_to_CSV_Big_Input_L(ObsID_L, Clobber_Bool=False, Just_Standard_File_Bool=False, Standard_File_Outpath="/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv"):
     Error_List=[]
+    i=0
     for ObsID in ObsID_L:
-        if(Clobber_Bool==False):
+        if((Clobber_Bool==False) or (Just_Standard_File_Bool==False)):
             #/opt/xray/anthony/expansion_backup/Source_Fluxes/10125/*.csv
             Glob_Path="/opt/xray/anthony/expansion_backup/Source_Fluxes/"+str(ObsID)+"/*.csv"
             Glob_L=glob.glob(Glob_Path)
@@ -178,11 +229,23 @@ def Flux_File_to_CSV_Big_Input_L(ObsID_L, Clobber_Bool=False):
                 print(str(ObsID)+" Already exists and Clobber is set to False")
                 continue
         try:
-            Flux_File_to_CSV_Big_Input(ObsID=ObsID)
-            Merge_CSVs(ObsID)
+            if(Just_Standard_File_Bool==False):
+                Flux_File_to_CSV_Big_Input(ObsID=ObsID)
+                Merge_CSVs(ObsID)
+            Cur_Data=Standard_Flux_File_Generator(ObsID)
+            if((Clobber_Bool) or (Just_Standard_File_Bool)):
+                if(i==0):
+                    Merged_Data=Cur_Data
+                else:
+                    Merged_Data=pd.concat([Merged_Data, Cur_Data], ignore_index=True)
         except:
             Error_List.append(ObsID)
+        i=i+1
+    if((Clobber_Bool) or (Just_Standard_File_Bool)):
+        Merged_Data.to_csv(Standard_File_Outpath, index=False)
     print("Error_List: ", Error_List)
+
+
 #Flux_File_to_CSV_Big_Input(10125,9)
 #Flux_File_to_CSV_Big_Input(10125,9,Key="soft")
 #Flux_File_to_CSV_Big_Input(10125)
@@ -191,5 +254,6 @@ def Flux_File_to_CSV_Big_Input_L(ObsID_L, Clobber_Bool=False):
 #Merge_CSVs(10125)
 #Flux_File_to_CSV_Big_Input_L([316, 318, 349, 350, 353, 354, 361, 378, 379, 383, 384, 388, 389, 390, 391, 392, 393, 394, 395, 402, 404, 405, 407, 409, 410, 411, 413, 414, 735, 782, 784, 790, 792, 793, 794, 795, 797, 808, 864, 870, 871, 872, 882, 934, 942, 962, 969, 1302, 1564, 1579, 1586, 1587, 1618, 1622, 1633, 1634, 1635, 1636, 1637, 1638, 1640, 2014, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2039, 2040, 2057, 2058, 2059, 2064, 2065, 2075, 2076, 2148, 2197, 2198, 2255, 2260, 2340, 2686, 2879, 2885, 2916, 2917, 2918, 2919, 2925, 2933, 2934, 2949, 2950, 2976, 2978, 3012, 3325, 3550, 3551, 3786, 3787, 3788, 3925, 3930, 3931, 3932, 3933, 3934, 3935, 3936, 3937, 3938, 3939, 3940, 3941, 3942, 3943, 3949, 3950, 3953, 3954, 3965, 4010, 4016, 4017, 4019, 4176, 4555, 4556, 4557, 4558, 4613, 4627, 4628, 4629, 4630, 4688, 4689, 4690, 4692, 4693, 4694, 4696, 4697, 4725, 4726, 4727, 4728, 4729, 4730, 4731, 4732, 4733, 4734, 4735, 4736, 4737, 4743, 4744, 4745, 4746, 4747, 4748, 4749, 4750, 4751, 4752, 4753, 4754, 5197, 5283, 5296, 5297, 5300, 5301, 5302, 5309, 5322, 5323, 5337, 5338, 5339, 5340, 5619, 5644, 5905, 5911, 5929, 5930, 5931, 5935, 5936, 5937, 5938, 5939, 5940, 5941, 5942, 5943, 5944, 5945, 5946, 5947, 5948, 5949, 6096, 6097, 6114, 6115, 6118, 6152, 6169, 6170, 6175, 6184, 6185, 6361, 6727, 6781, 6782, 7060, 7069, 7073, 7074, 7075, 7076, 7082, 7083, 7084, 7086, 7087, 7090, 7091, 7093, 7095, 7096, 7098, 7101, 7103, 7104, 7105, 7106, 7111, 7113, 7115, 7116, 7118, 7120, 7121, 7123, 7124, 7127, 7132, 7134, 7146, 7147, 7150, 7152, 7153, 7154, 7252, 7369, 7797, 7798, 7799, 7800, 7850, 7858, 7863, 7885, 8050, 8052, 8053, 8058, 8086, 8091, 8098, 8125, 8126, 8190, 8197, 8198, 8458, 8464, 8465, 8489, 8490, 9120, 9121, 9122, 9278, 9532, 9533, 9534, 9535, 9536, 9537, 9538, 9539, 9540, 9541, 9542, 9543, 9545, 9546, 9547, 9548, 9549, 9550, 9551, 9552, 9553, 9570, 9805, 9877, 9883, 10025, 10026, 10027, 10125, 10274, 10275, 10276, 10277, 10278, 10279, 10280, 10281, 10289, 10290, 10291, 10292, 10293, 10542, 10543, 10544, 10545, 10559, 10560, 10722, 10723, 10724, 10725, 10726, 10868, 10875, 10925, 11032, 11033, 11034, 11080, 11081, 11082, 11083, 11084, 11085, 11086, 11104, 11260, 11268, 11272, 11273, 11289, 11295, 11309, 11311, 11317, 11761, 11782, 11786, 11800, 11846, 11847, 12095, 12155, 12156, 12238, 12239, 12301, 12437, 12473, 12562, 12668, 12696, 12748, 12978, 12981, 12992, 12993, 12994, 12995, 12996, 13018, 13202, 13241, 13248, 13303, 13304, 13439, 13686, 13728, 13765, 13791, 13796, 13812, 13813, 13814, 13815, 13816, 13817, 13819, 13820, 13821, 13822, 13829, 13830, 13831, 13832, 14017, 14018, 14230, 14231, 14332, 14341, 14342, 14349, 14350, 14351, 14376, 14378, 14383, 14384, 14412, 14419, 14437, 14442, 14471, 14675, 14676, 14795, 14801, 14896, 14902, 14912, 14984, 14985, 15149, 15190, 15200, 15294, 15295, 15333, 15382, 15384, 15386, 15387, 15496, 15553, 15572, 15574, 15579, 15582, 15587, 15588, 15589, 15594, 15603, 15616, 15646, 15756, 15760, 15771, 15803, 16000, 16001, 16002, 16003, 16005, 16023, 16024, 16028, 16029, 16032, 16033, 16068, 16069, 16121, 16122, 16234, 16260, 16261, 16262, 16276, 16277, 16484, 16485, 16556, 16580, 16745, 16969, 16978, 16983, 16991, 16994, 16995, 16996, 16997, 17000, 17003, 17007, 17032, 17155, 17180, 17461, 17462, 17471, 17472, 17547, 17569, 17570, 17571, 17578, 17678, 17890, 17891, 18047, 18048, 18053, 18054, 18062, 18063, 18064, 18065, 18066, 18067, 18068, 18069, 18070, 18071, 18072, 18073, 18340, 18341, 18342, 18343, 18352, 18440, 18454, 18455, 18461, 18462, 18760, 18875, 19297, 19304, 19339, 19344, 19345, 19346, 19348, 19350, 19351, 19354, 19357, 19363, 19374, 19386, 19387, 19392, 19393, 19394, 19397, 19403, 19407, 19411, 19414, 19416, 19417, 19421, 19422, 19428, 19437, 19497, 19521, 19522, 19524, 19747, 19748, 19981, 19982, 20333, 20343, 20353, 20356, 20495, 20585, 20752, 20753, 20794, 20965, 20966, 20992, 20993, 20997, 20998, 20999, 21000, 21001, 21003, 21036, 21077, 21082, 21230, 21350, 21351, 21352, 21384, 21471, 21472, 21473, 21474, 21479, 21545, 21639, 21640, 21647, 21648, 21649, 21698, 21699, 21853, 22189, 22194, 22372, 22375, 22478, 22479, 22480, 22481, 22482, 22714, 22715, 23075, 23076, 23140, 23141, 23216, 23217, 23218, 23219, 23220, 23223, 23266, 23472, 23473, 23474, 23475, 23476, 23477, 23478, 23479, 23480, 23481, 23482, 23483, 23484, 23485, 23486, 23487, 23488, 23489, 23490, 23491, 23492, 23493, 23494, 23495, 23496, 23497, 23498, 23499, 23559, 23561, 23564, 24707, 24981, 24986, 25179, 25186, 25191, 25689]) #Full List with Unarchived ObsIDs 23500 and 23501 removed #Removed ObsIDs 380,400,963,1578 due to missing files. #Removing 1621, 1624 until issues with it are resolved.
 #ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs(Remove_Unarchived=True)
-ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs(Remove_Unarchived=True, ObsID_Tester_Bool=True)
-Flux_File_to_CSV_Big_Input_L(ObsID_L)
+##ObsID_L=ObsID_From_CSV_Query.Read_ObsIDs(Remove_Unarchived=True, ObsID_Tester_Bool=True)
+##Flux_File_to_CSV_Big_Input_L(ObsID_L)
+Standard_Flux_File_Generator(10125)
