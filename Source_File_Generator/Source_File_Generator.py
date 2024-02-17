@@ -14,6 +14,8 @@ import re
 import pyregion
 from ciao_contrib.runtool import *
 from region import *
+import urllib.request
+import bs4 as bs
 #def Evt2_File_Query(ObsID):
 def File_Query(ObsID,ObsID_Path='/Volumes/expansion/ObsIDs/',key="evt2"):
     Query_Path=ObsID_Path+str(ObsID)+'/**/*'+str(key)+'*'
@@ -25,7 +27,7 @@ def File_Query(ObsID,ObsID_Path='/Volumes/expansion/ObsIDs/',key="evt2"):
         ##raise Exception(str(ObsID)+" has "+str(len(fpath_L))+" "+str(key)+" Files ! ! !")
         for cur_fpath in fpath_L:
             if("repro" in cur_fpath):
-                print("Match")
+                #print("Match")
                 fpath=cur_fpath
                 break
             elif("/new/" in cur_fpath):
@@ -43,6 +45,7 @@ def Gname_Query(ObsID, Data_Path="/opt/xray/anthony/Research_Git/SQL_Standard_Fi
         raise Exception("Data_Path has "+str(len(Glob_L))+" Matching Files ! ! !")
     Data_Path=Glob_L[0]
     Data=pd.read_csv(Data_Path)
+    #print("Data: ", Data)
     ##Data_Reduced=Data[Data["Obs ID"].isin([ObsID])]
     Data_Reduced=Data[Data["Obs ID"] == ObsID]
     Data_Reduced=Data_Reduced.reset_index(drop=True)
@@ -53,9 +56,10 @@ def Gname_Query(ObsID, Data_Path="/opt/xray/anthony/Research_Git/SQL_Standard_Fi
 def GC_Query(ObsID):
     #print "ObsID: ", ObsID
     Gname=Gname_Query(ObsID)
-    #print "Gname: ", Gname
-    #print "ObsID: ", ObsID
-    if(Gname=="Error"):
+    #print("Gname: ", Gname)
+    #print("type(Gname): ", type(Gname))
+    #print("ObsID: ", ObsID)
+    if(str(Gname)=="nan"):
         print("Error Gname: ", Gname)
         #return "Error","Error"
         return np.nan,np.nan
@@ -63,7 +67,7 @@ def GC_Query(ObsID):
         #print "NED Gname: ", Gname
         G_Data= Ned.query_object(Gname) #G_Data:-astropy.table.table.Table, Galaxy_Data, The Galaxy Data Table queried from NED
     except:
-        raise Exception("Galaxy name"+str(Gname)+"ObsID "+str(ObsID)+" Not Queryied from NED")
+        raise Exception("Galaxy name "+str(Gname)+" ObsID "+str(ObsID)+" Not Queryied from NED")
     #print G_Data
     try:
         raGC=float(G_Data['RA(deg)'])
@@ -72,10 +76,81 @@ def GC_Query(ObsID):
         raGC=float(G_Data['RA'])
         decGC=float(G_Data['DEC'])
     return raGC, decGC
+def Galaxy_Morph_Query(ObsID):
+    #print "ObsID: ", ObsID
+    Gname=Gname_Query(ObsID)
+    if(isinstance(Gname, float)): #Checks for np.nan
+        print("Error Gname: ", Gname)
+        return np.nan
+    #Gname_No_Whitespace=Gname.replace(" ","_")
+    Gname_No_Whitespace=Gname.replace(" ","")
+    #print("Gname_No_Whitespace: ", Gname_No_Whitespace)
+    #print("Gname: ", Gname)
+    #print("type(Gname): ", type(Gname))
+    #print("ObsID: ", ObsID)
+    if(str(Gname)=="nan"):
+        print("Error Gname: ", Gname)
+        #return "Error","Error"
+        return np.nan
+    #url="https://ned.ipac.caltech.edu/cgi-bin/NEDatt?objname=NGC_3631"
+    url="https://ned.ipac.caltech.edu/cgi-bin/NEDatt?objname="+str(Gname_No_Whitespace)
+    #print("url: ", url)
+    source = urllib.request.urlopen(url).read()
+    soup = bs.BeautifulSoup(source,'html.parser')
+    soup.prettify()
+    tables = soup.find_all("table")
+    #print("len(tables): ", len(tables))
+    if(len(tables)<2):
+        print("Only "+str(len(tables))+" NED Morphology Tables Found!")
+        print("tables\n:", tables)
+        return np.nan
+        #table=tables[0]
+    #else:
+    table=tables[1]
+    #print("tables:\n", tables)
+    #print("table:\n", table)
+    #Row_L=[]
+    table_rows = table.find_all('tr')
+    Match_Found_Bool=False
+    for tr in table_rows:
+        td = tr.find_all('td')
+        row = [i.text for i in td]
+        #print(row)
+        if(len(row)==8):
+            #print("row[1]: ", row[1])
+            if(row[1]=="1991RC3.9.C...0000d"):
+                Match_Row=row
+                Match_Found_Bool=True
+        #Row_L.append(row)
+    if(Match_Found_Bool==False):
+        print(Gname+" Morphology not found")
+        return np.nan
+    Morph_Row=Match_Row
+    #Morph_Row=Row_L[25]
+    #print("Morph_Row: ", Morph_Row)
+    Morph_Str=Morph_Row[0]
+    return Morph_Str
+
+def Morph_Reducer(ObsID):
+    Morph_Str=Galaxy_Morph_Query(ObsID)
+    if(isinstance(Morph_Str,float)):
+        return np.nan
+    Morph_L=["S","E","I"]
+    for Morph in Morph_L:
+        if(Morph in Morph_Str):
+            return Morph
 
 def D25_Query(ObsID):
     Gname=Gname_Query(ObsID)
-    Dia_Table = Ned.get_table(Gname, table='diameters') #Dia_Table:-astropy.table.table.Table, Diameter_Table, The Data table queried from NED that contains the infomation about the Major Axis of the input Galaxy Name
+    if(str(Gname)=="nan"):
+        print("Error Gname: ", Gname)
+        return np.nan,np.nan,np.nan
+    print("ObsID: ", ObsID)
+    print("Gname: ", Gname)
+    try:
+        Dia_Table = Ned.get_table(Gname, table='diameters') #Dia_Table:-astropy.table.table.Table, Diameter_Table, The Data table queried from NED that contains the infomation about the Major Axis of the input Galaxy Name
+    except:
+        return np.nan,np.nan,np.nan
     #Dia_Table = Ned.get_table(Resolved_Name, table='diameters') #Dia_Table:-astropy.table.table.Table, Diameter_Table, The Data table queried from NED that contains the infomation about the Major Axis of the input Galaxy Name
     #print(type(Dia_Table))
     #print(Dia_Table)
@@ -93,6 +168,7 @@ def D25_Query(ObsID):
     #print type(Dia_Table_Num)
     Dia_Table_Num_L=list(Dia_Table_Num)
     #print Dia_Table_Num_L
+    Match_Bool=False
     for i in range(0,len(Dia_Table_Feq_L)-1): #There is a bug here with index matching, The matched index isn't that same index for the major axis
         Cur_Feq=Dia_Table_Feq_L[i]
         #print Cur_Feq
@@ -100,14 +176,22 @@ def D25_Query(ObsID):
             Match_inx=i
             Match_Feq=Dia_Table_Feq_L[Match_inx]
             Match_Num=Dia_Table_Num_L[Match_inx]
+            Match_Bool=True
             #Match_Num
             #print "Match_Feq ", Match_Feq
             #print "Match_inx ", Match_inx
             #print "Match_Num ", Match_Num
+    if(Match_Bool==False):
+        return np.nan,np.nan,np.nan
     #Dia_Table_Maj=Dia_Table['Major Axis']
     Dia_Table_Maj=Dia_Table['NED Major Axis']
+    Dia_Table_Min=Dia_Table['NED Minor Axis']
+    Dia_Table_Angle=Dia_Table['NED Position Angle']
+    #print("Dia_Table_Angle:\n", Dia_Table_Angle)
     #print Dia_Table_Maj
     Dia_Table_Maj_L=list(Dia_Table_Maj)
+    Dia_Table_Min_L=list(Dia_Table_Min)
+    Dia_Table_Angle_L=list(Dia_Table_Angle)
     #print Dia_Table_Maj_L
     Dia_Table_Maj_Units=Dia_Table['Major Axis Unit']
     #print Dia_Table_Maj_Units
@@ -115,6 +199,8 @@ def D25_Query(ObsID):
     #print Dia_Table_Maj_Units_L
     #print "i ", i
     D25_Maj=Dia_Table_Maj_L[Match_inx]
+    D25_Min=Dia_Table_Min_L[Match_inx]
+    D25_Angle=Dia_Table_Angle_L[Match_inx]
     #print "D25_Maj ", D25_Maj
     D25_Units=Dia_Table_Maj_Units[Match_inx]
     #print "D25_Units ", D25_Units
@@ -127,8 +213,125 @@ def D25_Query(ObsID):
     D25_S_Maj=D25_Maj/2.0
     D25_S_Maj_Deg=D25_S_Maj/3600.0
     D25_S_Maj_Arcmin=D25_S_Maj_Deg*60.0
+    D25_S_Min=D25_Min/2.0
+    D25_S_Min_Deg=D25_S_Min/3600.0
+    D25_S_Min_Arcmin=D25_S_Min_Deg*60.0
     #return D25_S_Maj_Deg
-    return D25_S_Maj_Arcmin
+    ##return D25_S_Maj_Arcmin
+    return (D25_S_Maj_Arcmin, D25_S_Min_Arcmin, D25_Angle)
+
+def Galatic_Distance_Query(ObsID,Distance_Ref_Code="1988NBGC.C....0000T"):
+    """
+    Gname=Gname_Query(ObsID)
+    if(str(Gname)=="nan"):
+        print("Error Gname: ", Gname)
+        return np.nan
+    print("ObsID: ", ObsID)
+    print("Gname: ", Gname)
+    #result_table = Ned.query_object(Gname)
+    #print("result_table:\n", result_table)
+    #print("result_table keys: ", list(result_table.keys()))
+    try:
+        Dist_Table = Ned.get_table(Gname, table='redshifts') #Dia_Table:-astropy.table.table.Table, Diameter_Table, The Data table queried from NED that contains the infomation about the Major Axis of the input Galaxy Name
+    except:
+        return np.nan
+    print("Dist_Table:\n", Dist_Table)
+    print("Dist_Table keys: ", list(Dist_Table.keys()))
+    """
+    #print "ObsID: ", ObsID
+    Gname=Gname_Query(ObsID)
+    if(isinstance(Gname, float)): #Checks for np.nan
+        print("Error Gname: ", Gname)
+        return np.nan
+    #Gname_No_Whitespace=Gname.replace(" ","_")
+    Gname_No_Whitespace=Gname.replace(" ","")
+    #print("Gname_No_Whitespace: ", Gname_No_Whitespace)
+    #print("Gname: ", Gname)
+    #print("type(Gname): ", type(Gname))
+    #print("ObsID: ", ObsID)
+    if(str(Gname)=="nan"):
+        print("Error Gname: ", Gname)
+        #return "Error","Error"
+        return np.nan
+    #url="https://ned.ipac.caltech.edu/cgi-bin/NEDatt?objname=NGC_3631"
+    #url="https://ned.ipac.caltech.edu/cgi-bin/NEDatt?objname="+str(Gname_No_Whitespace)
+    #url="http://ned.ipac.caltech.edu/cgi-bin/nDistance?name=NGC1300"
+    url="http://ned.ipac.caltech.edu/cgi-bin/nDistance?name="+str(Gname_No_Whitespace)
+    print("url: ", url)
+    source = urllib.request.urlopen(url).read()
+    soup = bs.BeautifulSoup(source,'html.parser')
+    soup.prettify()
+    tables = soup.find_all("table")
+    #print("len(tables): ", len(tables))
+    if(len(tables)<2):
+        print("Only "+str(len(tables))+" NED Distance Tables Found!")
+        print("tables\n:", tables)
+        return np.nan
+        #table=tables[0]
+    #else:
+    table=tables[1]
+    #print("tables:\n", tables)
+    #print("table:\n", table)
+    #Row_L=[]
+    table_rows = table.find_all('tr')
+    Match_Found_Bool=False
+    for tr in table_rows:
+        td = tr.find_all('td')
+        row = [i.text for i in td]
+        #print(row)
+        #print(len(row))
+        if(len(row)==10):
+            #print("row[1]: ", row[1])
+            #if(row[3]=="1997ApJS..109..333W"):
+            #1988NBGC.C....0000T
+            #if(row[4]=="1984A&AS...56..381B"):
+            if(row[4]==Distance_Ref_Code):
+                Match_Row=row
+                Match_Found_Bool=True
+        #Row_L.append(row)
+    if(Match_Found_Bool==False):
+        print(Gname+" Distance not found")
+        return np.nan
+    #Match_Row=table_rows[0] #For Testing
+    Dist_Row=Match_Row
+    #Dist_Row=Row_L[25]
+    #print("Dist_Row: ", Dist_Row)
+    Dist_Str=Dist_Row[2]
+    Dist=float(Dist_Str)
+    return Dist
+
+def Luminosity_Calc(Flux,Distance):
+    #Distance_cm=Distance*(3.086e+24)
+    Distance_cm=Distance*(3.086*(10**24))
+    #L=4.0*np.pi*(Distance**2.0)*Flux
+    L=4.0*np.pi*(Distance_cm**2.0)*Flux
+    return L
+
+def Luminosity_Calc_Bulk(Data):
+    Key_L=list(Data.keys())
+    print("Key_L: ", Key_L)
+    Flux_Key_L=[]
+    for Key in Key_L:
+        if "FLUX" in Key:
+            Flux_Key_L.append(Key)
+    print("Flux_Key_L: ", Flux_Key_L)
+    for Flux_Key in Flux_Key_L:
+        Flux_A=Data[Flux_Key]
+        Dist_A=Data["Galatic_Distance"]
+        Lum_Key=Flux_Key.replace("FLUX","LUM")
+        #data[Lum_Key]=np.vectorize(Inside_FOV_Bool_Calc)(ObsID_A,Src_A)
+        #Luminosity_Calc(Flux,Distance)
+        Lum_A=np.vectorize(Luminosity_Calc)(Flux_A,Dist_A)
+        Column_Index=int(Data.columns.get_loc("Exposure_Time"))
+        #df.insert(loc = 0, column = 'Band', value = Band)
+        Data.insert(loc = Column_Index, column = Lum_Key, value = Lum_A)
+    return Data
+
+def Start_Date_Calc(ObsID):
+    Cur_Evt2_Filepath=File_Query(ObsID)
+    hdulist = fits.open(Cur_Evt2_Filepath)
+    Start_Date=hdulist[1].header['DATE-OBS']
+    return Start_Date
 
 def Exposure_Time_Calc(ObsID):
     evtfpath=File_Query(ObsID)
@@ -136,6 +339,14 @@ def Exposure_Time_Calc(ObsID):
     Exposure_Time=hdulist[1].header['EXPOSURE']
     #print("Exposure_Time: ", Exposure_Time)
     return Exposure_Time
+
+def Roll_Angle_Calc(ObsID):
+    evtfpath=File_Query(ObsID)
+    hdulist = fits.open(evtfpath)
+    Roll_Angle=hdulist[1].header['ROLL_PNT']
+    #print("Roll_Angle: ", Roll_Angle)
+    return Roll_Angle
+
 def Source_Known_Flux_Finder(ObsID,Source_Num,Effective_Area_Correction_Bool=True):
     Nearest_Neighbor_Hybrid_Coords_Fpath="/Volumes/xray/anthony/Research_Git/Nearest_Raytraced_Neighbor_Calc/Hybrid_Regions/"+str(ObsID)+"/Nearest_Neighbor_Hybrid_Sources_ObsID_"+str(ObsID)+"_Coords.csv"
     Hybrid_Sources_Data=pd.read_csv(Nearest_Neighbor_Hybrid_Coords_Fpath)
@@ -276,6 +487,9 @@ def Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(ObsID,Source_Num):
     if(Offaxis_Angle_Annulus_Number>9):
         return np.nan
     Gname=Gname_Query(ObsID)
+    if(str(Gname)=="nan"):
+        print("Error Gname: ", Gname)
+        return np.nan
     #Offaxis_Angle_Annulus_Number=Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
     Area_List_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/"+str(Gname)+"/Area_Lists/"+str(ObsID)+"/*evt2_Area_List.txt"
     Area_List_Path_L=glob.glob(Area_List_Query_Path)
@@ -312,23 +526,340 @@ def RA_DEC_Calc(ObsID,Source_Num,Reg_Path="/opt/xray/anthony/expansion_backup/Hy
     RA=Hybrid_Sources_Data.iloc[Source_Num-1]["RA"]
     Dec=Hybrid_Sources_Data.iloc[Source_Num-1]["DEC"]
     return RA, Dec
+
+def Deg_to_Rad(Angle):
+    Angle=(np.pi/180.0)*Angle
+    return Angle
+
+def Rad_to_Deg(Angle):
+    Angle=(180.0/np.pi)*Angle
+    return Angle
+
+def Angle_Convert(Angle):
+    """
+    Angle:-float, an anlge in radians
+
+    Converts angles to be in the range of 0 rad<New_Angle<2pi rad
+    """
+    Full_Cricle=2.0*np.pi
+    #print("Full_Cricle: ", Full_Cricle)
+    if(Angle<0):
+        New_Angle=Angle+Full_Cricle
+        #print("New_Angle After: ", New_Angle)
+        return New_Angle
+    if(Angle>Full_Cricle):
+        New_Angle=Angle-Full_Cricle
+        return New_Angle
+    else:
+    #if((Angle>0) and (Angle<Full_Cricle)):
+        New_Angle=Angle
+    print("New_Angle Out: ", New_Angle)
+    return New_Angle
+
+def Haversine_Distance(x1,x2,y1,y2):
+    dx=x2-x1
+    dy=y2-y1
+    B=np.sqrt(((np.sin(dy/2.0))**2.0)+((np.cos(y1)*np.cos(y2))*((np.sin(dx/2.0))**2.0)))
+    if(y1<0): #Note: This might not work for galaxies on the equator! This needs to be tested! #Note: This works on the equator as well!
+        B=-1.0*B
+    Have_Dist=2.0*np.arcsin(B)
+    return Have_Dist
+
 def Distance_From_GC_Calc(ObsID,Source_Num):
     Source_RA,Source_DEC=RA_DEC_Calc(ObsID,Source_Num)
     Source_RA_Arcmin=Source_RA*60.0
     Source_DEC_Arcmin=Source_DEC*60.0
     GC_RA,GC_DEC=GC_Query(ObsID)
+    x1_Rad=Deg_to_Rad(GC_RA)
+    x2_Rad=Deg_to_Rad(Source_RA)
+    y1_Rad=Deg_to_Rad(GC_DEC)
+    y2_Rad=Deg_to_Rad(Source_DEC)
+    Have_Dist=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y2_Rad)
+    Have_Dist=np.abs(Have_Dist)
+    Have_Dist_Deg=Rad_to_Deg(Have_Dist)
+    Have_Dist_Arcmin=Have_Dist_Deg*60.0
+    print("Have_Dist_Arcmin: ", Have_Dist_Arcmin)
+    dx_Have=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y1_Rad)
     #if(GC_RA=="Error"):
     if(GC_RA==np.nan):
         return
     GC_RA_Arcmin=GC_RA*60.0
     GC_DEC_Arcmin=GC_DEC*60.0
     dist=np.sqrt(((GC_DEC_Arcmin-Source_DEC_Arcmin)**2.0)+((GC_RA_Arcmin-Source_RA_Arcmin)**2.0))
-    return dist
+    #return dist
+    return Have_Dist_Arcmin
+
 def Outside_D25_Bool_Calc(ObsID,Source_Num):
-    D25_S_Maj_Arcmin=D25_Query(ObsID)
+    #D25_S_Maj_Arcmin=D25_Query(ObsID)
+    D25_Info=D25_Query(ObsID)
+    D25_S_Maj_Arcmin=D25_Info[0]
+    if(D25_S_Maj_Arcmin==np.nan):
+        return np.nan
     Dist_Arcmin=Distance_From_GC_Calc(ObsID,Source_Num)
     Outside_D25_Bool=(float(Dist_Arcmin)>float(D25_S_Maj_Arcmin))
     return Outside_D25_Bool
+
+def Phi_Query(ObsID, Source_Num, Data_Path="/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv", Key="PHI"): #Note: It would be better to refernce another file
+    #query_path='/Volumes/xray/simon/all_chandra_observations/'+str(ObsID)+'/primary/*evt2*'
+    Glob_L=glob.glob(Data_Path)
+    if(len(Glob_L)!=1):
+        raise Exception("Data_Path has "+str(len(Glob_L))+" Matching Files ! ! !")
+    Data_Path=Glob_L[0]
+    Data=pd.read_csv(Data_Path)
+    #print("Data: ", Data)
+    ##Data_Reduced=Data[Data["Obs ID"].isin([ObsID])]
+    Data_Reduced=Data[Data["ObsID"] == ObsID]
+    Data_Reduced=Data_Reduced.reset_index(drop=True)
+    #print("Data_Reduced: ", Data_Reduced)
+    #Phi=Data_Reduced[Key].loc[0]
+    Phi_A=Data_Reduced[Key]
+    #print("Phi_A:\n", Phi_A)
+    #Offaxis_Angle=Hybrid_Sources_Data.iloc[Source_Num-1]["Offaxis_Angle"]
+    Phi=Phi_A.iloc[Source_Num-1]
+    return Phi
+
+def Psi_Calc(ObsID, Source_Num):
+    Roll_Angle=Roll_Angle_Calc(ObsID)
+    #print("Roll_Angle: ", Roll_Angle)
+    Phi=Phi_Query(ObsID, Source_Num)
+    #print("Phi: ", Phi)
+    Psi=Roll_Angle-Phi+90
+    return Psi
+
+def Lambda_Calc(ObsID, Source_Num):
+    Psi=Psi_Calc(ObsID, Source_Num)
+    D25_Info=D25_Query(ObsID)
+    Galaxy_Position_Angle=D25_Info[2]
+    if(Galaxy_Position_Angle==np.nan):
+        return np.nan
+    #Lambda=Psi-Galaxy_Position_Angle-270
+    Lambda=Psi+Galaxy_Position_Angle-180
+    return Lambda
+
+def Deg_to_Rad(Angle):
+    Angle=(np.pi/180.0)*Angle
+    return Angle
+
+def Rad_to_Deg(Angle):
+    Angle=(180.0/np.pi)*Angle
+    return Angle
+
+def Angle_Convert(Angle):
+    """
+    Angle:-float, an anlge in radians
+
+    Converts angles to be in the range of 0 rad<New_Angle<2pi rad
+    """
+    Full_Cricle=2.0*np.pi
+    #print("Full_Cricle: ", Full_Cricle)
+    if(Angle<0):
+        New_Angle=Angle+Full_Cricle
+        #print("New_Angle After: ", New_Angle)
+        return New_Angle
+    if(Angle>Full_Cricle):
+        New_Angle=Angle-Full_Cricle
+        return New_Angle
+    else:
+    #if((Angle>0) and (Angle<Full_Cricle)):
+        New_Angle=Angle
+    print("New_Angle Out: ", New_Angle)
+    return New_Angle
+
+def Ellipse_Radius_Calc(a,b,Ang_Rel):
+    """
+    a:-float, Semi-major axis of source ellipse
+    b:-float, Semi-minor axis of source ellipse
+    Ang_Rel:-float, Polar angle at which the ellipse radius will be calculated in radians
+
+    Calcuates the radius of an ellipse at a given polar angle
+    """
+    if((a==0) or (b==0)):
+        return 0.0
+    r=(a*b)/(np.sqrt(((b*np.cos(Ang_Rel))**2.0)+((a*np.sin(Ang_Rel))**2.0)))
+    return r
+
+def Source_Overlap_Calc(x1,x2,y1,y2,a1,a2,b1,b2,rot1,rot2,M=2.0):
+    """
+    x1:-float, X Postion of First source ellipse
+    x2:-float, X Postion of Second source ellipse
+    y1:-float, Y Postion of First source ellipse
+    y2:-float, Y Postion of Second source ellipse
+    a1:-float, Semi-major axis of First source ellipse
+    a2:-float, Semi-major axis of Second source ellipse
+    b1:-float, Semi-minor axis of First source ellipse
+    b2:-float, Semi-minor axis of Second source ellipse
+    rot1:-float, rotation angle of First source ellipse
+    rot2:-float, rotation angle of Second source ellipse
+
+    This function takes the coordinates for two source ellipse region shapes as an input and then returns a list of booleans where
+    the first element bool is True when the first source has the second source in its backgournd area and the second element bool is True
+    when the first soruce area is overlapping with the second source area.
+    """
+    dx=x2-x1
+    print("x2: ", x2)
+    print("x1: ", x1)
+    #dx=7.730 #For Testing
+    print("dx Before: ", dx)
+    dy=y2-y1
+    print("dy: ", dy)
+    x1_Deg=x1/60.0
+    x1_Rad=Deg_to_Rad(x1_Deg)
+    x2_Deg=x2/60.0
+    x2_Rad=Deg_to_Rad(x2_Deg)
+    y1_Deg=y1/60.0
+    y1_Rad=Deg_to_Rad(y1_Deg)
+    y2_Deg=y2/60.0
+    y2_Rad=Deg_to_Rad(y2_Deg)
+    Have_Dist=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y2_Rad)
+    Have_Dist=np.abs(Have_Dist)
+    Have_Dist_Deg=Rad_to_Deg(Have_Dist)
+    Have_Dist_Arcmin=Have_Dist_Deg*60.0
+    #print("Have_Dist: ", Have_Dist)
+    dx_Have=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y1_Rad)
+    dx_Have_Deg=Rad_to_Deg(dx_Have)
+    dx_Have_Arcmin=dx_Have_Deg*60.0
+    dx=dx_Have_Arcmin
+    print("dx After: ", dx)
+    if((dx==0) and (dy==0)):
+        #print "Same_Source"
+        return [False,False]
+    Position_Angle_1=np.arctan2(dy,dx)
+    #print("Position_Angle_1 deg: ", Position_Angle_1*(180.0/np.pi))
+    #print("rot1: ", rot1)
+    Position_Angle_1=Angle_Convert(Position_Angle_1)
+    print("Position_Angle_1 deg: ", Position_Angle_1*(180.0/np.pi))
+    Position_Angle_2=Position_Angle_1+np.pi
+    Position_Angle_2=Angle_Convert(Position_Angle_2)
+    Dist=np.sqrt((dx**2.0)+(dy**2.0))
+    #Dist=Dist*60.0 #For degrees to arcmin (not always used)
+    rot1_Rad=Deg_to_Rad(rot1)
+    rot1_Rad=Angle_Convert(rot1_Rad)
+    rot2_Rad=Deg_to_Rad(rot2)
+    rot2_Rad=Angle_Convert(rot2_Rad)
+    #print("Position_Angle_1: ", Position_Angle_1)
+    #print("rot1_Rad: ", rot1_Rad)
+    print("rot1_Rad deg: ", rot1_Rad*(180.0/np.pi))
+    Relative_Angle_1=Position_Angle_1-rot1_Rad #Need to make sure rot1 is in radians
+    #print("Relative_Angle_1: ", Relative_Angle_1)
+    Relative_Angle_2=Position_Angle_2-rot2_Rad #Need to make sure rot2 is in radians
+    print("Relative_Angle_1 deg Before: ", Relative_Angle_1*(180.0/np.pi))
+    Relative_Angle_1=Angle_Convert(Relative_Angle_1)
+    print("Relative_Angle_1 deg After: ", Relative_Angle_1*(180.0/np.pi))
+    Relative_Angle_2=Angle_Convert(Relative_Angle_2)
+    r1=Ellipse_Radius_Calc(a1,b1,Relative_Angle_1)
+    r1_Background=M*r1
+    r2=Ellipse_Radius_Calc(a2,b2,Relative_Angle_2)
+    r1_x=r1*np.cos(Relative_Angle_1)
+    r1_x_Deg=r1_x/60.0
+    r1_x_Rad=Deg_to_Rad(r1_x_Deg)
+    r1_y=r1*np.sin(Relative_Angle_1)
+    r1_y_Deg=r1_y/60.0
+    r1_y_Rad=Deg_to_Rad(r1_y_Deg)
+    r1_Have=Haversine_Distance(x2_Rad,r1_x_Rad,y1_Rad,r1_y_Rad)
+    r1_Have=np.abs(r1_Have)
+    Dgs=Dist-r1-r2
+    Dgs_Have=Have_Dist-r1_Have-r2 #Note: r2 not converted yet.
+    #print("Have_Dist_Arcmin: ", Have_Dist_Arcmin)
+    #print("r1_Have: ", r1_Have)
+    print("Dist: ", Dist)
+    print("r1: ", r1)
+    #print("r2: ", r2)
+    print("Dgs: ", Dgs)
+    #print("Dgs_Have: ", Dgs_Have)
+    Dgb=Dist-r1_Background-r2
+    #print "Dgb: ", Dgb
+    Background_Overlap_Bool=(Dgb<0)
+    Source_Overlap_Bool=(Dgs<0)
+    Overlap_List=[Background_Overlap_Bool,Source_Overlap_Bool]
+    return Overlap_List
+
+def Outside_Elliptical_D25_Bool_Calc(ObsID,Source_Num):
+    print("Source_Num: ", Source_Num)
+    Source_RA,Source_DEC=RA_DEC_Calc(ObsID,Source_Num)
+    print("Source Coords: ", "("+str(Source_RA)+","+str(Source_DEC)+")")
+    Source_RA_Arcmin=Source_RA*60.0
+    Source_DEC_Arcmin=Source_DEC*60.0
+    print("Source Coords Arcmin: ", "("+str(Source_RA_Arcmin)+","+str(Source_DEC_Arcmin)+")")
+    print("Source Coords Arcmin deg: ", "("+str(Source_RA_Arcmin/60.0)+","+str(Source_DEC_Arcmin/60.0)+")")
+    GC_RA,GC_DEC=GC_Query(ObsID)
+    print("GC Coords: ", "("+str(GC_RA)+","+str(GC_DEC)+")")
+    #if(GC_RA=="Error"):
+    if(GC_RA==np.nan):
+        return
+    GC_RA_Arcmin=GC_RA*60.0
+    GC_DEC_Arcmin=GC_DEC*60.0
+    print("GC Coords Arcmin: ", "("+str(GC_RA_Arcmin)+","+str(GC_DEC_Arcmin)+")")
+    print("GC Coords Arcmin deg: ", "("+str(GC_RA_Arcmin/60.0)+","+str(GC_DEC_Arcmin/60.0)+")")
+
+    D25_Info=D25_Query(ObsID)
+    D25_Maj=D25_Info[0]
+    if(D25_Maj==np.nan):
+        return
+    #print(isinstance(D25_Query(7087)[2],np.ma.core.MaskedConstant))
+    D25_Min=D25_Info[1]
+    D25_Angle=D25_Info[2] #Note: I think this needs to be converted to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    print("D25_Angle: ", D25_Angle)
+    if(isinstance(D25_Min,np.ma.core.MaskedConstant) or isinstance(D25_Angle,np.ma.core.MaskedConstant)): #In the event that the ellipse is assumed to be a cirlce by RC3
+        print(str(ObsID)+" has a circular D25 region")
+        return Outside_D25_Bool_Calc(ObsID,Source_Num)
+    """
+    #Beta=D25_Angle-90.0 #This is the converstion to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    #Beta=(-1.0*D25_Angle)+90.0 #This is the converstion to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    #Beta=(-1.0*D25_Angle)+90.0 #This is the converstion to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    Beta=90.0-D25_Angle #This is the converstion to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    #Beta=90.0+D25_Angle #This is the converstion to the correct angle measured from the +X-axis to the +Y-axis (W to N)
+    #Beta=D25_Angle-270
+    #if(Beta<0):
+        #Beta=-1.0*Beta
+        #Beta=Beta+360.0
+    if(D25_Angle>90.0):
+        Beta=D25_Angle-90.0
+        #Beta=D25_Angle+90.0
+        #Beta=Beta+180.0
+    print("Beta: ", Beta)
+    """
+    #dx=Source_RA_Arcmin-GC_RA_Arcmin
+    dx=GC_RA_Arcmin-Source_RA_Arcmin
+    dy=Source_DEC_Arcmin-GC_DEC_Arcmin
+    if((D25_Angle>90) and (dx>0) and (dy>0)):
+        print("Q1 Condition")
+        Theta=D25_Angle-90
+    elif((D25_Angle<90) and (dx>0) and (dy<0)):
+        print("Q4 Condition")
+        Theta=D25_Angle+270
+        #GC_RA_Arcmin=-1.0*GC_RA_Arcmin
+        #Source_RA_Arcmin=-1.0*Source_RA_Arcmin
+    else:
+        Theta=D25_Angle+90
+    print("Theta: ", Theta)
+
+    #Source_Overlap_Calc(x1,x2,y1,y2,a1,a2,b1,b2,rot1,rot2,M=1.0) :)
+    #Overlap_Bool=Source_Overlap_Calc(GC_RA_Arcmin,Source_RA,GC_DEC_Arcmin,Source_DEC_Arcmin,D25_Maj,0,D25_Min,0,Beta,0,M=1.0)[-1]
+    ##Overlap_Bool=Source_Overlap_Calc(GC_RA_Arcmin,Source_RA_Arcmin,GC_DEC_Arcmin,Source_DEC_Arcmin,D25_Maj,0,D25_Min,0,Beta,0,M=1.0)[-1]
+    #Overlap_Bool=Source_Overlap_Calc(GC_RA_Arcmin,Source_RA_Arcmin,GC_DEC_Arcmin,Source_DEC_Arcmin,D25_Maj,0,D25_Min,0,Theta,0,M=1.0)[-1]
+    #Overlap_Bool=Source_Overlap_Calc(-1.0*GC_RA_Arcmin,-1.0*Source_RA_Arcmin,GC_DEC_Arcmin,Source_DEC_Arcmin,D25_Maj,0,D25_Min,0,Theta,0,M=1.0)[-1]
+    Overlap_Bool=Source_Overlap_Calc(Source_RA_Arcmin,GC_RA_Arcmin,GC_DEC_Arcmin,Source_DEC_Arcmin,D25_Maj,0,D25_Min,0,Theta,0,M=1.0)[-1]
+    #Overlap_Bool=Source_Overlap_Calc(Source_RA,GC_RA,GC_DEC,Source_DEC,D25_Maj,0,D25_Min,0,Theta,0,M=1.0)[-1]
+
+    if(Overlap_Bool==True):
+        return False
+    if(Overlap_Bool==False):
+        return True
+
+def Circular_D25_Bool_Calc(ObsID):
+    D25_Info=D25_Query(ObsID)
+    D25_Maj=D25_Info[0]
+    if(D25_Maj==np.nan):
+        return
+    #print(isinstance(D25_Query(7087)[2],np.ma.core.MaskedConstant))
+    D25_Min=D25_Info[1]
+    D25_Angle=D25_Info[2]
+    if(isinstance(D25_Min,np.ma.core.MaskedConstant) or isinstance(D25_Angle,np.ma.core.MaskedConstant)): #In the event that the ellipse is assumed to be a cirlce by RC3
+        print(str(ObsID)+" has a circular D25 region")
+        return True
+    else:
+        return False
+
 def Aimpoint_Coords_Calc(ObsID):
     Cur_Evt2_Filepath=File_Query(ObsID)
     hdulist = fits.open(Cur_Evt2_Filepath)
@@ -350,12 +881,22 @@ def Distance_Galatic_Center_to_Aimpoint_Calc(ObsID):
     Pointing_Dec=hdulist[1].header['DEC_PNT']
     Pointing_Diff_RA=Pointing_RA-GC_RA
     Pointing_Diff_Dec=Pointing_Dec-GC_DEC
+    x1_Rad=Deg_to_Rad(GC_RA)
+    x2_Rad=Deg_to_Rad(Pointing_RA)
+    y1_Rad=Deg_to_Rad(GC_DEC)
+    y2_Rad=Deg_to_Rad(Pointing_Dec)
+    Have_Dist=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y2_Rad)
+    Have_Dist=np.abs(Have_Dist)
+    Have_Dist_Deg=Rad_to_Deg(Have_Dist)
+    Have_Dist_Arcmin=Have_Dist_Deg*60.0
+    print("Have_Dist_Arcmin: ", Have_Dist_Arcmin)
     Dist=np.sqrt((Pointing_Diff_RA**2.0)+(Pointing_Diff_Dec**2.0))
     Dist_Arcmin=Dist*60.0
     #Dist_L=[Cur_Evt2_ObsID,Dist_Arcmin]
     #Dist_H_L.append(Dist_L)
     #return Dist_H_L
-    return Dist_Arcmin
+    #return Dist_Arcmin
+    return Have_Dist_Arcmin
 def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
     #pass
     #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
@@ -363,7 +904,8 @@ def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
     RA_Aimpoint_L=list(RA_Aimpoint_A)
     DEC_Aimpoint_A=Data["DEC_Aimpoint"]
     DEC_Aimpoint_L=list(DEC_Aimpoint_A)
-    ObsID_A=Data['OBSID']
+    #ObsID_A=Data['OBSID']
+    ObsID_A=Data['ObsID']
     ObsID_L=list(ObsID_A)
     #Aimpoint_Coords=data['OBSID',"RA_Aimpoint","DEC_Aimpoint"]
     Overlapping_ObsID_HL=[]
@@ -385,6 +927,14 @@ def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
             Aimpoint_Diff_RA=RA_Aimpoint-RA_Aimpoint_Test
             Aimpoint_Diff_DEC=DEC_Aimpoint-DEC_Aimpoint_Test
             Dist=np.sqrt((Aimpoint_Diff_RA**2.0)+(Aimpoint_Diff_DEC**2.0))
+            x1_Rad=Deg_to_Rad(RA_Aimpoint)
+            x2_Rad=Deg_to_Rad(RA_Aimpoint_Test)
+            y1_Rad=Deg_to_Rad(DEC_Aimpoint)
+            y2_Rad=Deg_to_Rad(DEC_Aimpoint_Test)
+            Have_Dist=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y2_Rad)
+            Have_Dist=np.abs(Have_Dist)
+            Have_Dist_Deg=Rad_to_Deg(Have_Dist)
+            Dist=Have_Dist_Deg
             if(Dist<Dist_Threshold):
                 Overlapping_ObsID_Bool=True
                 #print ObsID_Test
@@ -399,9 +949,11 @@ def Overlapping_ObsID_Calc(Data,Dist_Threshold=2.0):
     Data["Close_ObsIDs"]=Overlapping_ObsID_HL
     return Data
 def Close_Observations_Finder(Data,ObsID,Source_Num):
-    ObsID_A=Data['OBSID']
+    #ObsID_A=Data['OBSID']
+    ObsID_A=Data['ObsID']
     ObsID_L=list(ObsID_A)
-    Source_Num_A=Data['SOURCE']
+    #Source_Num_A=Data['SOURCE']
+    Source_Num_A=Data['Source_Num']
     Source_Num_L=list(Source_Num_A)
     Close_ObsIDs_A=Data['Close_ObsIDs']
     Close_ObsIDs_HL=list(Close_ObsIDs_A)
@@ -430,13 +982,15 @@ def Close_Observations_Finder(Data,ObsID,Source_Num):
 def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to be determed. Temperary value used.
     #pass
     #Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID)
-    ObsID_A=Data['OBSID']
+    #ObsID_A=Data['OBSID']
+    ObsID_A=Data['ObsID']
     ObsID_L=list(ObsID_A)
-    Source_Num_A=Data['SOURCE']
+    #Source_Num_A=Data['SOURCE']
+    Source_Num_A=Data['Source_Num']
     Source_Num_L=list(Source_Num_A)
-    Source_RA_A=Data['RA']
+    Source_RA_A=Data['RA_WavD']
     Source_RA_L=list(Source_RA_A)
-    Source_Dec_A=Data['DEC']
+    Source_Dec_A=Data['DEC_WavD']
     Source_Dec_L=list(Source_Dec_A)
     #Close_ObsIDs_Bool
     Close_ObsIDs_Bool_A=Data['Close_ObsIDs_Bool']
@@ -472,14 +1026,14 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to
             ObsID_Int=int(ObsID_Str)
             Close_ObsIDs_L.append(ObsID_Int)
         #df.loc[df['column_name'].isin(some_values)]
-        Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
-        ObsID_A_Test=Data_Test['OBSID']
+        Data_Test=Data.loc[Data['ObsID'].isin(Close_ObsIDs_L)]
+        ObsID_A_Test=Data_Test['ObsID']
         ObsID_L_Test=list(ObsID_A_Test)
-        Source_Num_A_Test=Data_Test['SOURCE']
+        Source_Num_A_Test=Data_Test['Source_Num']
         Source_Num_L_Test=list(Source_Num_A_Test)
-        Source_RA_A_Test=Data_Test['RA']
+        Source_RA_A_Test=Data_Test['RA_WavD']
         Source_RA_L_Test=list(Source_RA_A_Test)
-        Source_Dec_A_Test=Data['DEC']
+        Source_Dec_A_Test=Data['DEC_WavD']
         Source_Dec_L_Test=list(Source_Dec_A_Test)
         for j in range(0,len(ObsID_L_Test)):
             ObsID_Test=ObsID_L_Test[j]
@@ -491,6 +1045,14 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to
             Source_RA_Diff=Source_RA-Source_RA_Test
             Source_Dec_Diff=Source_Dec-Source_Dec_Test
             Dist=np.sqrt((Source_RA_Diff**2.0)+(Source_Dec_Diff**2.0))
+            x1_Rad=Deg_to_Rad(Source_RA)
+            x2_Rad=Deg_to_Rad(Source_RA_Test)
+            y1_Rad=Deg_to_Rad(Source_Dec)
+            y2_Rad=Deg_to_Rad(Source_Dec_Test)
+            Have_Dist=Haversine_Distance(x1_Rad,x2_Rad,y1_Rad,y2_Rad)
+            Have_Dist=np.abs(Have_Dist)
+            Have_Dist_Deg=Rad_to_Deg(Have_Dist)
+            Dist=Have_Dist_Deg
             if(Dist<Dist_Threshold):
                 Duplicate_Source_Bool=True
                 #print ObsID_Test
@@ -507,6 +1069,35 @@ def Duplicate_Source_Calc(Data,Dist_Threshold=(2.0/3600.0)): #Threshold needs to
     Data["Duplicate_Source_Bool"]=Duplicate_Source_Bool_L
     Data["Duplicate_Sources"]=Duplicate_Source_HL
     return Data
+def Color_Color_Calc(S,M,H):
+    if(H+M==0.0):
+        HC_Ratio=np.nan
+    else:
+        HC_Ratio=(H-M)/((H+M))
+    if(M+S==0.0):
+        SC_Ratio=np.nan
+    else:
+        SC_Ratio=(M-S)/((M+S))
+    return HC_Ratio, SC_Ratio
+def Flux_Colors_Calc(ObsID, Source_Num, Data_Path="/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv", Soft_Key="NET_FLUX_APER_0.3-1.0", Medium_Key="NET_FLUX_APER_1.0-2.1", Hard_Key="NET_FLUX_APER_2.1-7.5"):
+    Glob_L=glob.glob(Data_Path)
+    if(len(Glob_L)!=1):
+        raise Exception("Data_Path has "+str(len(Glob_L))+" Matching Files ! ! !")
+    Data_Path=Glob_L[0]
+    Data=pd.read_csv(Data_Path)
+    Data_Reduced=Data[Data["ObsID"] == ObsID]
+    Data_Reduced=Data_Reduced.reset_index(drop=True)
+    Soft_A=Data_Reduced[Soft_Key]
+    Medium_A=Data_Reduced[Medium_Key]
+    Hard_A=Data_Reduced[Hard_Key]
+    Soft=Soft_A.iloc[Source_Num-1]
+    Medium=Medium_A.iloc[Source_Num-1]
+    Hard=Hard_A.iloc[Source_Num-1]
+    print("Soft: ", Soft)
+    print("Medium: ", Medium)
+    print("Hard: ", Hard)
+    Colors=Color_Color_Calc(Soft,Medium,Hard)
+    return Colors
 def CCD_Region_Query(ObsID):
     #Region_File_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/"+str(Gname)+"/Area_Lists/"+str(ObsID)+"/*"+str(ObsID)+"*_CCD_Regions_simple_region_modifed_Code.txt"
     Region_File_Query_Path="/Volumes/xray/anthony/Research_Git/Master_Code/Master_Output/*/Area_Lists/"+str(ObsID)+"/*"+str(ObsID)+"*_CCD_Regions_simple_region_modifed_Code.txt"
@@ -721,32 +1312,32 @@ def Region_ObsID_Reference_Frame_Converter(ObsID,Region):  #Note: Still being wo
     return Region_Converted
 def Unioned_Limiting_Flux_Area_Calc(Data,F_L_Bounds): #Note: Still being worked on
     #pass
-    ObsID_A=Data['OBSID']
-    Src_A=Data['SOURCE']
+    ObsID_A=Data['ObsID']
+    Src_A=Data['Source_Num']
     Data["Annulus_Intersection_Regions"]=np.vectorize(Limiting_Flux_Annulus_Intersection)(ObsID_A,Src_A)
     print('Data["Annulus_Intersection_Regions"]: ', Data["Annulus_Intersection_Regions"])
     ##Data_Slice=Limiting_Flux_Data_Slice_Calc(Data,F_L_Bounds)
     Data_Slice=Data #Note: This is a test
-    Data_Slice=Data_Slice.drop_duplicates(subset=["OBSID","Offaxis_Angle_Annulus_Number"])
+    Data_Slice=Data_Slice.drop_duplicates(subset=["ObsID","Offaxis_Angle_Annulus_Number"])
     Data_Slice=Data_Slice[Data_Slice['Close_ObsIDs_Bool']]
     Data_Slice=Data_Slice.reset_index(drop=True)
     print("Data_Slice:\n", Data_Slice)
-    ObsID_A_Slice=Data_Slice['OBSID']
+    ObsID_A_Slice=Data_Slice['ObsID']
     ObsID_L_Slice=list(ObsID_A_Slice)
-    Src_A_Slice=Data_Slice['SOURCE']
+    Src_A_Slice=Data_Slice['Source_Num']
     Src_L_Slice=list(Src_A_Slice)
     for i in range(0,len(ObsID_L_Slice)):
         ObsID=ObsID_L_Slice[i]
         Source_Num=Src_L_Slice[i]
-        if(ObsID not in list(Data_Slice['OBSID'])):
+        if(ObsID not in list(Data_Slice['ObsID'])):
             pass
         Close_ObsIDs_L=Close_Observations_Finder(Data_Slice,ObsID,Source_Num)
         print("Close_ObsIDs_L: ", Close_ObsIDs_L)
         #Example: Data_Test=Data.loc[Data['OBSID'].isin(Close_ObsIDs_L)]
-        Data_Slice_Close=Data_Slice.loc[Data_Slice['OBSID'].isin(Close_ObsIDs_L)] #Note: There is a bug here
+        Data_Slice_Close=Data_Slice.loc[Data_Slice['ObsID'].isin(Close_ObsIDs_L)] #Note: There is a bug here
         print("Data_Slice_Close:\n", Data_Slice_Close)
-        ObsID_L_Slice_Close=list(Data_Slice_Close['OBSID'])
-        Data_Slice=Data_Slice.loc[~Data_Slice['OBSID'].isin(Close_ObsIDs_L)] #Note: This is to prevent the repeated calculation of the area of the same Overlapping ObsID Group
+        ObsID_L_Slice_Close=list(Data_Slice_Close['ObsID'])
+        Data_Slice=Data_Slice.loc[~Data_Slice['ObsID'].isin(Close_ObsIDs_L)] #Note: This is to prevent the repeated calculation of the area of the same Overlapping ObsID Group
         Annulus_Intersection_Regions_A=Data_Slice_Close["Annulus_Intersection_Regions"] #Note: All Annulus_Intersection_Regions must be put in the same ObsID reference frame
         Annulus_Intersection_Regions_L=list(Annulus_Intersection_Regions_A)
         Annulus_Intersection_Regions_Converted_L=[]
@@ -766,6 +1357,8 @@ def Unioned_Limiting_Flux_Area_Calc(Data,F_L_Bounds): #Note: Still being worked 
         return Unioned_Area
 def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data=pd.read_csv(fpath)
+    Key_L=list(data.keys())
+    print("Key_L: ", Key_L)
     """
     data['RAW_COUNTS[.3-7.5]']=data['RAW_COUNTS[.3-1]']+data['RAW_COUNTS[1-2.1]']+data['RAW_COUNTS[2.1-7.5]']
     data['BKG_COUNTS[.3-7.5]']=data['BKG_COUNTS[.3-1]']+data['BKG_COUNTS[1-2.1]']+data['BKG_COUNTS[2.1-7.5]']
@@ -774,16 +1367,22 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     data['NET_COUNTS[1-2.1]']=data['RAW_COUNTS[1-2.1]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[1-2.1]'])
     data['NET_COUNTS[2.1-7.5]']=data['RAW_COUNTS[2.1-7.5]']-((data['AREA']/data['BKG_AREA'])*data['BKG_COUNTS[2.1-7.5]'])
     """
-    ObsID_A=data['OBSID']
+    #Luminosity_Calc
+    #ObsID_A=data['OBSID']
+    ObsID_A=data['ObsID']
     ##'''
     Exposure_Time_A=ObsID_A.apply(Exposure_Time_Calc) #This works but takes to long as it unnecessarily repeats getting the exposure time for every object rather than every ObsID
     #print "Exposure_Time_A:\n", Exposure_Time_A
     data['Exposure_Time']=Exposure_Time_A
+    #Start_Date_Calc
+    Start_Date_A=ObsID_A.apply(Start_Date_Calc)
+    data['Start_Date']=Start_Date_A
     #data['Count_Rate[.3-7.5]']=data['RAW_COUNTS[.3-7.5]']/data['Exposure_Time'] #This should use net counts instead of raw counts!
-    data['Count_Rate[.3-7.5]']=data['NET_COUNTS[.3-7.5]']/data['Exposure_Time']
-    Src_A=data['SOURCE']
+    #data['Count_Rate[.3-7.5]']=data['NET_COUNTS[.3-7.5]']/data['Exposure_Time']
+    #Src_A=data['SOURCE']
+    Src_A=data['Source_Num']
     #df['new_column'] = np.vectorize(fx)(df['A'], df['B'])
-    data['Known_Flux[.3-7.5]']=np.vectorize(Source_Known_Flux_Finder,excluded=['Effective_Area_Correction_Bool'])(ObsID_A,Src_A,Effective_Area_Correction_Bool=False) #Note: This is done because the counts from the counts_info.csv file are already effective area corrected. I am not sure if this is the correct method since this also effects the pile-up estimation. Therefore this is an improvement of the double effective area correction bug but not a full solution. The fluxes will still be incorrect!
+    #data['Known_Flux[.3-7.5]']=np.vectorize(Source_Known_Flux_Finder,excluded=['Effective_Area_Correction_Bool'])(ObsID_A,Src_A,Effective_Area_Correction_Bool=False) #Note: This is done because the counts from the counts_info.csv file are already effective area corrected. I am not sure if this is the correct method since this also effects the pile-up estimation. Therefore this is an improvement of the double effective area correction bug but not a full solution. The fluxes will still be incorrect!
     #print "data:\n", data
     """
     print "data Grouped:\n", data.groupby("OBSID").groups
@@ -793,47 +1392,69 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
         print(group)
     """
     #F_U=F_K*((float(C)/Exposure_Time)/CR_K) # F_U:-float, Flux Unknown, This converts the current count value to the current flux value by assuming a linear relationship bewteen counts and flux, F_U is the calculated flux
-    data['Flux[.3-7.5]']=data['Known_Flux[.3-7.5]']*(data['Count_Rate[.3-7.5]']/CR_K)
-    data['Limiting_Flux[.3-7.5]']=np.vectorize(Limiting_Flux_Calc)(ObsID_A,Src_A)
+    #data['Flux[.3-7.5]']=data['Known_Flux[.3-7.5]']*(data['Count_Rate[.3-7.5]']/CR_K)
+    ##data['Limiting_Flux[.3-7.5]']=np.vectorize(Limiting_Flux_Calc)(ObsID_A,Src_A)
     #data['Flux_Cut_Bool[.3-7.5]']=np.where(data['Flux[.3-7.5]']>data['Flux_Cut_Bool[.3-7.5]'])
-    Flux_A=data['Flux[.3-7.5]']
+    #Flux_A=data['Flux[.3-7.5]']
     #print "type(Flux_A[3]): ", type(Flux_A[3])
-    Limiting_Flux_A=data['Limiting_Flux[.3-7.5]']
+    ##Limiting_Flux_A=data['Limiting_Flux[.3-7.5]']
     #print "type(Limiting_Flux_A[3]): ", type(Limiting_Flux_A[3])
-    data['Flux_Cut_Bool[.3-7.5]']=np.vectorize(Flux_Cut_Bool_Calc)(Flux_A,Limiting_Flux_A)
+    ##data['Flux_Cut_Bool[.3-7.5]']=np.vectorize(Flux_Cut_Bool_Calc)(Flux_A,Limiting_Flux_A)
     data["Inside_FOV_Bool"]=np.vectorize(Inside_FOV_Bool_Calc)(ObsID_A,Src_A)
     Coords=np.vectorize(RA_DEC_Calc)(ObsID_A,Src_A)
-    data["RA"]=Coords[0]
-    data["DEC"]=Coords[1]
+    data["RA_WavD"]=Coords[0]
+    data["DEC_WavD"]=Coords[1]
     #Offaxis_Angle_Calc(ObsID,Source_Num)
     data["Offaxis_Angle"]=np.vectorize(Offaxis_Angle_Calc)(ObsID_A,Src_A)
     #Offaxis_Angle_Annulus_Number_Calc(ObsID,Source_Num)
     data["Offaxis_Angle_Annulus_Number"]=np.vectorize(Offaxis_Angle_Annulus_Number_Calc)(ObsID_A,Src_A)
-    data["Offaxis_Angle_Annulus_CCD_Incompleteness"]=np.vectorize(Offaxis_Angle_Annulus_CCD_Incompleteness_Calc)(ObsID_A,Src_A)
+    ##data["Offaxis_Angle_Annulus_CCD_Incompleteness"]=np.vectorize(Offaxis_Angle_Annulus_CCD_Incompleteness_Calc)(ObsID_A,Src_A)
     data["Offaxis_Angle_Annulus_Area"]=np.vectorize(Offaxis_Angle_Annulus_Area_Calc)(ObsID_A,Src_A)
-    data["Observed_Offaxis_Angle_Annulus_Area"]=np.vectorize(Observed_Offaxis_Angle_Annulus_Area_Calc)(ObsID_A,Src_A)
+    ##data["Observed_Offaxis_Angle_Annulus_Area"]=np.vectorize(Observed_Offaxis_Angle_Annulus_Area_Calc)(ObsID_A,Src_A)
     data["Gname_Modifed"]=np.vectorize(Gname_Query)(ObsID_A)
+    #Galaxy_Morph_Query(ObsID)
+    data["Galaxy_Morph"]=np.vectorize(Galaxy_Morph_Query)(ObsID_A)
+    data["Galaxy_Morph_Simple"]=np.vectorize(Morph_Reducer)(ObsID_A)
     #GC_Query(ObsID)
     GC_Coords=np.vectorize(GC_Query)(ObsID_A)
     data["RA_GC"]=GC_Coords[0]
     data["DEC_GC"]=GC_Coords[1]
+    #Galatic_Distance_Query
+    data["Galatic_Distance"]=np.vectorize(Galatic_Distance_Query)(ObsID_A)
     #D25_Query(ObsID)
-    data["D25"]=np.vectorize(D25_Query)(ObsID_A)
+    ##data["D25"]=np.vectorize(D25_Query)(ObsID_A)
+    D25_Tuple_A=np.vectorize(D25_Query)(ObsID_A)
+    data["D25"]=D25_Tuple_A[0]
+    data["D25_Maj"]=D25_Tuple_A[0]
+    data["D25_Min"]=D25_Tuple_A[1]
+    data["D25_Angle"]=D25_Tuple_A[2]
     #Distance_From_GC_Calc(ObsID,Source_Num)
     data["Source_Distance_From_GC"]=np.vectorize(Distance_From_GC_Calc)(ObsID_A,Src_A)
+    #Psi_Calc
+    data["Psi"]=np.vectorize(Psi_Calc)(ObsID_A,Src_A)
     #Outside_D25_Bool_Calc(ObsID,Source_Num)
     data["Outside_D25_Bool"]=np.vectorize(Outside_D25_Bool_Calc)(ObsID_A,Src_A)
+    #Outside_Elliptical_D25_Bool_Calc
+    data["Outside_Elliptical_D25_Bool"]=np.vectorize(Outside_Elliptical_D25_Bool_Calc)(ObsID_A,Src_A)
+    #Circular_D25_Bool_Calc(ObsID)
+    data["Circular_D25_Bool"]=np.vectorize(Circular_D25_Bool_Calc)(ObsID_A)
     #Distance_Galatic_Center_to_Aimpoint_Calc(ObsID)
     ##'''
     #Aimpoint_Coords_Calc(ObsID)
     Aimpoint_Coords=np.vectorize(Aimpoint_Coords_Calc)(ObsID_A)
     data["RA_Aimpoint"]=Aimpoint_Coords[0]
     data["DEC_Aimpoint"]=Aimpoint_Coords[1]
+    data["Roll_Angle"]=np.vectorize(Roll_Angle_Calc)(ObsID_A)
     data["Distance_GC_to_Aimpoint"]=np.vectorize(Distance_Galatic_Center_to_Aimpoint_Calc)(ObsID_A)
+    data=Luminosity_Calc_Bulk(data)
     data=Overlapping_ObsID_Calc(data)
     data=Duplicate_Source_Calc(data)
     #with pd.option_context('display.max_rows', None):  # more options can be specified also
         #print "data:\n", data
+    Header_L = data.columns.tolist()
+    print("Header_L: ", Header_L)
+    #Header_Modified_L=Header_L[:21]+Header_L[281:]+Header_L[21:281]
+    #data=data[Header_Modified_L]
     print("data:\n", data)
     #Outfname=fpath.split("/")[0].split(".")[0]+"_Flux_Calc.csv"
     #print "Outfname: ", Outfname
@@ -845,6 +1466,19 @@ def Source_Counts_To_Flux_Converter(fpath,Outfpath,CR_K=0.01):
     #print "data:\n", data.loc(data['Flux_Cut_Bool[.3-7.5]']==True)
     #print "data:\n", data.loc(True)
     #print data['Flux_Cut_Bool[.3-7.5]'].loc(True)
+def Test_Column_Mods(fpath="/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All_Modified.csv"):
+    data=pd.read_csv(fpath)
+    #print("data: ", data)
+    Header_L = data.columns.tolist()
+    #print("Header_L: ", Header_L)
+    #Header_Modified_L=Header_L[:21]+Header_L[281:]+Header_L[21:281]
+    print("Header_L[:21]: ", Header_L[:21])
+    print("Header_L[282:]: ", Header_L[282:])
+    Header_Modified_L=Header_L[:21]+Header_L[282:]+Header_L[21:282]
+    #print("Header_Modified_L: ", Header_Modified_L)
+    data=data[Header_Modified_L]
+    Header_L_Modified = data.columns.tolist()
+    ##print("Header_L_Modified: ", Header_L_Modified)
 def Data_Testing(Func,fpath,arg,Outside_D25_Bool=False):
     data=pd.read_csv(fpath)
     if(Outside_D25_Bool==True):
@@ -936,12 +1570,12 @@ def Limiting_Flux_Model_Fitting(Data,Slope_Bounds=[-2.0,2.0],Flux_Error_Bounds=[
 
 def Limiting_Flux_Area_Calc(Data,F_L_Bounds):
     Data_Slice=Limiting_Flux_Data_Slice_Calc(Data,F_L_Bounds)
-    Data_Slice=Data_Slice.drop_duplicates(subset=["OBSID","Offaxis_Angle_Annulus_Number"])
+    Data_Slice=Data_Slice.drop_duplicates(subset=["ObsID","Offaxis_Angle_Annulus_Number"])
     Data_Slice=Data_Slice.reset_index(drop=True)
     print("F_L_Bounds: ", F_L_Bounds)
     #with pd.option_context('display.max_columns', None):
     #print "Limiting_Flux_Area Data_Slice:\n", Data_Slice
-    print("Limiting_Flux_Area Data_Slice:\n", Data_Slice[["OBSID","Gname_Modifed","RA","Offaxis_Angle_Annulus_Number"]])
+    print("Limiting_Flux_Area Data_Slice:\n", Data_Slice[["ObsID","Gname_Modifed","RA","Offaxis_Angle_Annulus_Number"]])
     Observed_Offaxis_Angle_Annulus_Area_A=Data_Slice["Observed_Offaxis_Angle_Annulus_Area"]
     Observed_Offaxis_Angle_Annulus_Area_Sum=Observed_Offaxis_Angle_Annulus_Area_A.sum()
     return Observed_Offaxis_Angle_Annulus_Area_Sum
@@ -1141,13 +1775,15 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print Limiting_Flux_Calc(12095,5)
 #print Limiting_Flux_Calc(2197,5)
 #print Limiting_Flux_Calc(6869,1)
-#print Distance_From_GC_Calc(12095,5)
+#print(Distance_From_GC_Calc(12095,5))
+#print(Distance_From_GC_Calc(735,7))
 #print Distance_From_GC_Calc(6869,5)
 #print Outside_D25_Bool_Calc(12095,5)
 #print Distance_From_GC_Calc(12095,20)
 #print Outside_D25_Bool_Calc(12095,20)
-#print Distance_Galatic_Center_to_Aimpoint_Calc(12095)
-#print Distance_Galatic_Center_to_Aimpoint_Calc(6869)
+#print(Distance_Galatic_Center_to_Aimpoint_Calc(12095))
+#print(Distance_Galatic_Center_to_Aimpoint_Calc(6869))
+#print(Distance_Galatic_Center_to_Aimpoint_Calc(735))
 #print Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(12095,1)
 #print Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(12095,5)
 #print Offaxis_Angle_Annulus_Area_Calc(12095,5)
@@ -1173,8 +1809,22 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print(File_Query(10125))
 #print(Gname_Query(10125))
 #print(GC_Query(10125))
+#print(Galaxy_Morph_Query(10125))
+#print(Galaxy_Morph_Query(808))
 #print(D25_Query(10125))
+#10725
+#print(D25_Query(10725))
+#NGC 3344
+#print(D25_Query(7087))
+#print(type(D25_Query(7087)[2]))
+#print(str(D25_Query(7087)[2]))
+#print(isinstance(D25_Query(7087)[2],np.ma.core.MaskedConstant))
+#print(type(D25_Query(7087)[0]))
+#7850
+#print(D25_Query(7850))
+#print(D25_Query(10293))
 #print(Exposure_Time_Calc(10125))
+#print(Roll_Angle_Calc(10125))
 #print(Inside_FOV_Bool_Calc(10125,1))
 #print(Offaxis_Angle_Calc(10125,1))
 #print(Offaxis_Angle_Annulus_CCD_Incompleteness_Calc(10125,15)) #Not working for all ObsIDs
@@ -1183,3 +1833,41 @@ def Data_Analysis(fpath,Outside_D25_Bool=False,Flux_Model_B=False,Output_File_Ex
 #print(Outside_D25_Bool_Calc(10125,1))
 #print(Aimpoint_Coords_Calc(10125))
 #print(Distance_Galatic_Center_to_Aimpoint_Calc(10125))
+#GC_Query(20495)
+#print(D25_Query(354))
+#print(D25_Query(7069))
+#Source_Counts_To_Flux_Converter("/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv","/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All_Modified.csv")
+#Source_Counts_To_Flux_Converter("/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv","/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All_Modified_2.csv")
+##Source_Counts_To_Flux_Converter("/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All.csv","/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_All_Modified_3.csv")
+#/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_Test.csv
+#Source_Counts_To_Flux_Converter("/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_Test_2.csv","/opt/xray/anthony/Research_Git/SQL_Standard_File/Source_Flux_Test_2_Modified.csv")
+#Test_Column_Mods()
+#print(Phi_Query(10125, 1))
+#print(Psi_Calc(10125, 1))
+#print(Psi_Calc(16260, 59))
+#print(Outside_Elliptical_D25_Bool_Calc(10125, 1))
+#print(Outside_Elliptical_D25_Bool_Calc(10125, 15))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 86))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 87))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 5))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 88))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 80))
+#print(Outside_Elliptical_D25_Bool_Calc(969, 84))
+#print(Outside_Elliptical_D25_Bool_Calc(735, 6))
+#print(Outside_Elliptical_D25_Bool_Calc(735, 7))
+#Note: ObsID 17032 is on the has GC_Dec=-0.5 deg
+#Note: ObsID 18760 is on the has GC_Dec=0.1 deg
+#Note: ObsID 4694 is on the has GC_Dec=-0.036 deg
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 5))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 47))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 48))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 46))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 25))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 44))
+#print(Outside_Elliptical_D25_Bool_Calc(4694, 3))
+#print(Galatic_Distance_Query(10125))
+#print(Galatic_Distance_Query(735))
+#print(Circular_D25_Bool_Calc(10125))
+#print(Circular_D25_Bool_Calc(7087))
+#print(Flux_Colors_Calc(10125, 1))
+print(Flux_Colors_Calc(10125, 3))
